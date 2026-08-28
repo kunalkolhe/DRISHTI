@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CITIZEN
+  FIELD_WORKER
+  DEPT_OFFICER
+  CONTRACTOR
+  ADMIN
+}
+
+enum AssetCategory {
+  STREETLIGHT
+  HANDPUMP
+  OPEN_GYM
+  SOLAR_LIGHT
+  CCTV
+  PUBLIC_TOILET
+}
+
+enum ComplaintStatus {
+  OPEN
+  ROUTED
+  CLOSED
+  REJECTED
+}
+
+model User {
+  id               Int      @id @default(autoincrement())
+  name             String
+  email            String?  @unique
+  mobileNumber     String   @unique
+  passwordHash     String
+  role             Role     @default(CITIZEN)
+  trustScore       Float    @default(100.0)
+  createdAt        DateTime @default(now())
+
+  complaints       Complaint[] @relation("CitizenComplaints")
+  serviceHistories ServiceHistory[] @relation("WorkerServices")
+}
+
+model Asset {
+  id               Int           @id @default(autoincrement())
+  qrCodeId         String        @unique
+  category         AssetCategory
+  gpsLat           Float
+  gpsLon           Float
+  department       String
+  installDate      DateTime?
+  warrantyStatus   String?
+  replacementCost  Float?
+  riskScore        Float         @default(0.0)
+  createdAt        DateTime      @default(now())
+
+  complaints       Complaint[]
+  serviceHistories ServiceHistory[]
+}
+
+model Complaint {
+  id               Int             @id @default(autoincrement())
+  assetId          Int?
+  citizenId        Int
+  status           ComplaintStatus @default(OPEN)
+  severity         String?
+  description      String?
+  address          String?
+  gpsLat           Float?
+  gpsLon           Float?
+  originalPhotoUrl String
+  voiceNoteUrl     String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  asset            Asset?          @relation(fields: [assetId], references: [id])
+  citizen          User            @relation("CitizenComplaints", fields: [citizenId], references: [id])
+}
+
+model ServiceHistory {
+  id               Int      @id @default(autoincrement())
+  assetId          Int
+  workerId         Int
+  repairPhotoUrl   String
+  repairCost       Float?
+  date             DateTime @default(now())
+
+  asset            Asset    @relation(fields: [assetId], references: [id])
+  worker           User     @relation("WorkerServices", fields: [workerId], references: [id])
+}
+
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  entityType   String   // e.g., 'Complaint', 'Asset'
+  entityId     Int
+  action       String
+  timestamp    DateTime @default(now())
+  previousHash String?
+  currentHash  String
+}
