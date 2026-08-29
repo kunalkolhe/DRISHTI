@@ -1,45 +1,60 @@
 import Link from "next/link";
 import { getSession, logoutUser } from "@/app/actions/auth";
-import { UserCircle, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
+import Logo from "@/components/Logo";
 
 export default async function Navbar() {
   const session = await getSession();
 
   return (
-    <header className="w-full bg-white border-b border-gray-100 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary text-white rounded-lg flex items-center justify-center font-display font-bold text-xl">D</div>
-          <span className="font-display font-extrabold text-xl tracking-tight text-primary hidden sm:inline-block">DRISHTI</span>
-        </Link>
-        
-        <nav className="flex gap-4 text-sm font-semibold text-slate-600 items-center">
-          <Link href="/scorecard" className="px-4 py-2 rounded-full border border-gray-200 hover:border-primary/30 hover:bg-primary/5 transition-all hidden md:inline-block">Scorecard</Link>
-          
+    <header
+      className="w-full sticky top-0 z-50"
+      style={{
+        background: "#eee8da",
+        borderBottom: "1px solid rgba(18,21,15,.16)",
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-6 py-3.5 flex justify-between items-center gap-3 flex-wrap">
+        <div className="mr-auto">
+          <Logo href="/" size={36} />
+        </div>
+
+        <nav className="flex gap-2 items-center flex-wrap" style={{ fontSize: 15 }}>
+          <Link href="/scorecard" className="drishti-hover drishti-navlink hidden md:inline-block" style={{ color: "#3d433a", padding: "9px 14px", borderRadius: 999, textDecoration: "none" }}>
+            Scorecard
+          </Link>
+
           {!session ? (
             <>
-              <Link href="/login" className="px-4 py-2 rounded-full border border-gray-200 hover:border-primary/30 hover:bg-primary/5 transition-all">Login</Link>
-              <Link href="/login" className="px-4 py-2 rounded-full bg-primary text-white hover:bg-primary/90 transition-all">Register</Link>
+              <Link href="/login" className="drishti-hover drishti-navlink" style={{ color: "#3d433a", padding: "9px 14px", borderRadius: 999, textDecoration: "none" }}>
+                Login
+              </Link>
+              <Link href="/report" className="drishti-hover drishti-navcta" style={{ fontWeight: 500, background: "#12150f", color: "#eee8da", padding: "0 22px", minHeight: 44, borderRadius: 999, display: "inline-flex", alignItems: "center", boxShadow: "0 3px 0 rgba(18,21,15,.45)", textDecoration: "none" }}>
+                Report a problem
+              </Link>
             </>
           ) : (
             <>
-              {session.role === 'CITIZEN' && (
-                <Link href="/my-reports" className="px-4 py-2 rounded-full border border-gray-200 hover:border-primary/30 hover:bg-primary/5 transition-all">My Reports</Link>
+              {session.role === "CITIZEN" && (
+                <Link href="/my-reports" className="drishti-hover drishti-navlink" style={{ color: "#3d433a", padding: "9px 14px", borderRadius: 999, textDecoration: "none" }}>
+                  My Reports
+                </Link>
               )}
-              {session.role === 'FIELD_WORKER' && (
-                <Link href="/worker" className="px-4 py-2 rounded-full bg-accent text-white hover:bg-accent/90 transition-all">Worker Dashboard</Link>
+              {session.role === "FIELD_WORKER" && (
+                <Link href="/worker" className="drishti-hover drishti-navcta" style={{ fontWeight: 500, background: "#0d5347", color: "#f8fbf0", padding: "0 20px", minHeight: 44, borderRadius: 999, display: "inline-flex", alignItems: "center", boxShadow: "0 3px 0 rgba(9,58,50,.9)", textDecoration: "none" }}>
+                  Worker Dashboard
+                </Link>
               )}
-              {session.role === 'ADMIN' && (
-                <Link href="/admin" className="px-4 py-2 rounded-full bg-slate-800 text-white hover:bg-slate-900 transition-all">Admin Panel</Link>
+              {session.role === "ADMIN" && (
+                <Link href="/admin" className="drishti-hover drishti-navcta" style={{ fontWeight: 500, background: "#12150f", color: "#eee8da", padding: "0 20px", minHeight: 44, borderRadius: 999, display: "inline-flex", alignItems: "center", boxShadow: "0 3px 0 rgba(18,21,15,.45)", textDecoration: "none" }}>
+                  Admin Panel
+                </Link>
               )}
-              
-              <div className="flex items-center gap-3 pl-4 border-l border-gray-200 ml-2">
-                <div className="flex items-center gap-2 text-slate-700">
-                  <UserCircle className="w-5 h-5 text-primary" />
-                  <span className="font-bold hidden sm:inline-block">{session.name}</span>
-                </div>
+
+              <div className="flex items-center gap-3 pl-3" style={{ borderLeft: "1px solid rgba(18,21,15,.18)", marginLeft: 6 }}>
+                <span className="dc-mono hidden sm:inline-block" style={{ fontSize: 10, color: "#3d433a" }}>{session.name}</span>
                 <form action={logoutUser}>
-                  <button type="submit" className="text-slate-400 hover:text-alert transition-colors p-1" title="Logout">
+                  <button type="submit" title="Logout" className="p-1" style={{ background: "transparent", border: "none", cursor: "pointer", color: "#8a8676" }}>
                     <LogOut className="w-4 h-4" />
                   </button>
                 </form>

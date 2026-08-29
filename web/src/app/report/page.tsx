@@ -185,16 +185,16 @@ export default function ReportPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-sm w-full text-center space-y-6">
-          <div className="mx-auto w-20 h-20 bg-success/10 text-success rounded-full flex items-center justify-center">
-            <CheckCircle2 className="w-10 h-10" />
+      <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "#eee8da" }}>
+        <div className="dc-surface p-8 max-w-sm w-full text-center space-y-6">
+          <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center" style={{ background: "#dee8c4", border: "1.5px solid rgba(13,83,71,.4)" }}>
+            <CheckCircle2 className="w-10 h-10 text-primary" />
           </div>
           <div>
-            <h2 className="text-2xl font-display font-extrabold text-primary mb-2">Report Logged</h2>
-            <p className="text-slate-500 text-sm leading-relaxed">Your report is permanently bound to the asset's Digital Twin.</p>
+            <h2 className="text-2xl font-display font-semibold text-primary mb-2">Report logged</h2>
+            <p className="text-slate-500 text-sm leading-relaxed">Your report is permanently bound to the asset&apos;s digital twin. The SLA clock started at capture time.</p>
           </div>
-          <button onClick={() => { setSuccess(false); setPhotoFile(null); setAudioBlob(null); setAudioUrl(null); setDescription(""); }} className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl transition-colors">
+          <button onClick={() => { setSuccess(false); setPhotoFile(null); setAudioBlob(null); setAudioUrl(null); setDescription(""); }} className="dc-pill w-full" style={{ minHeight: 52 }}>
             Done
           </button>
         </div>
@@ -203,20 +203,20 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col max-w-md mx-auto relative shadow-2xl pb-24">
-      
-      <header className="bg-white p-6 border-b border-gray-100 sticky top-0 z-10 flex items-center justify-between">
-        <h1 className="font-display font-extrabold text-xl text-primary">Report Issue</h1>
+    <div className="min-h-screen flex flex-col max-w-md mx-auto relative pb-24" style={{ background: "#eee8da", borderLeft: "1.5px solid rgba(18,21,15,.14)", borderRight: "1.5px solid rgba(18,21,15,.14)" }}>
+
+      <header className="p-6 sticky top-0 z-10 flex items-center justify-between" style={{ background: "#eee8da", borderBottom: "1.5px solid rgba(18,21,15,.16)" }}>
+        <h1 className="font-display font-semibold text-xl text-primary">Report an issue</h1>
         {location && (
-          <div className="bg-success/10 text-success text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded flex items-center gap-1 shadow-sm">
-            <MapPin className="w-3 h-3" /> GPS Tagged
+          <div className="dc-badge">
+            <MapPin className="w-3 h-3" /> GPS tagged
           </div>
         )}
       </header>
 
       <main className="flex-grow p-6">
         {errorMsg && (
-          <div className="mb-6 p-4 bg-alert/10 border border-alert/20 text-alert rounded-xl text-sm font-medium flex items-center gap-3">
+          <div className="mb-6 p-4 rounded-xl text-sm font-medium flex items-center gap-3" style={{ background: "rgba(178,60,46,.1)", border: "1.5px solid rgba(178,60,46,.3)", color: "#b23c2e" }}>
             <AlertCircle className="w-5 h-5 shrink-0" />
             {errorMsg}
           </div>
@@ -228,89 +228,89 @@ export default function ReportPage() {
             
             {/* QR Scanner Field */}
             <div>
-              <label className="text-sm font-bold text-slate-800 mb-2 flex justify-between items-center">
-                <span>Asset ID <span className="text-slate-400 font-normal text-xs">(Optional)</span></span>
-                <button type="button" onClick={() => setShowQRScanner(true)} className="text-accent text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+              <label className="mb-2 flex justify-between items-center">
+                <span className="dc-mono">Asset ID (optional)</span>
+                <button type="button" onClick={() => setShowQRScanner(true)} className="dc-mono flex items-center gap-1" style={{ color: "#0d5347" }}>
                   <QrCode className="w-3 h-3" /> Scan QR
                 </button>
               </label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  name="qrCodeId" 
-                  value={assetId}
-                  onChange={(e) => setAssetId(e.target.value)}
-                  placeholder="Scan QR or enter ID" 
-                  className="w-full bg-white border border-gray-200 text-slate-800 font-mono text-base rounded-xl px-4 py-4 focus:ring-2 focus:ring-accent focus:border-accent outline-none shadow-sm transition-all" 
-                />
-              </div>
+              <input
+                type="text"
+                name="qrCodeId"
+                value={assetId}
+                onChange={(e) => setAssetId(e.target.value)}
+                placeholder="Scan QR or enter ID"
+                className="dc-field"
+                style={{ fontFamily: "var(--font-jetbrains), monospace" }}
+              />
             </div>
 
             {/* Manual Location Field */}
             <div>
-              <label className="text-sm font-bold text-slate-800 mb-2 flex justify-between items-center">
-                <span>Location Description</span>
-                <button type="button" onClick={captureGPS} className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors ${location ? 'text-success' : 'text-accent'}`}>
-                  <MapPin className="w-3 h-3" /> {location ? "GPS Tagged" : "Use GPS"}
+              <label className="mb-2 flex justify-between items-center">
+                <span className="dc-mono">Location description</span>
+                <button type="button" onClick={captureGPS} className="dc-mono flex items-center gap-1" style={{ color: location ? "#0d5347" : "#b5762a" }}>
+                  <MapPin className="w-3 h-3" /> {location ? "GPS tagged" : "Use GPS"}
                 </button>
               </label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 required
-                placeholder="e.g. Opposite Central Station, near main gate" 
-                className="w-full bg-white border border-gray-200 text-slate-800 text-base rounded-xl px-4 py-4 focus:ring-2 focus:ring-accent focus:border-accent outline-none shadow-sm transition-all" 
+                placeholder="e.g. Opposite Central Station, near main gate"
+                className="dc-field"
               />
             </div>
 
             {/* Severity Select */}
             <div>
-              <label className="text-sm font-bold text-slate-800 mb-2 block">Severity</label>
-              <select name="severity" required className="w-full bg-white border border-gray-200 text-slate-800 text-base rounded-xl px-4 py-4 outline-none shadow-sm transition-all">
-                <option value="LOW">Low (Minor damage, still functional)</option>
-                <option value="MEDIUM">Medium (Partially broken)</option>
-                <option value="HIGH">High (Completely broken / Dangerous)</option>
+              <label className="dc-mono mb-2 block">Severity</label>
+              <select name="severity" required className="dc-field">
+                <option value="LOW">Low — minor damage, still functional</option>
+                <option value="MEDIUM">Medium — partially broken</option>
+                <option value="HIGH">High — completely broken / dangerous</option>
               </select>
             </div>
 
             {/* Text Description (Auto-populated by Voice) */}
             <div>
-              <label className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
-                <Type className="w-4 h-4 text-slate-400" />
-                Description <span className="text-slate-400 font-normal text-xs">(Optional)</span>
+              <label className="dc-mono mb-2 flex items-center gap-2">
+                <Type className="w-4 h-4" />
+                Description (optional)
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder={isRecording ? "Listening to your voice..." : "Write a brief description or use voice note..."}
-                className={`w-full bg-white border border-gray-200 text-slate-800 text-base rounded-xl px-4 py-3 h-24 focus:ring-2 focus:ring-accent focus:border-accent outline-none shadow-sm transition-all resize-none ${isRecording ? 'bg-primary/5 border-primary/50 placeholder:text-primary animate-pulse' : ''}`}
+                placeholder={isRecording ? "Listening to your voice..." : "Write a brief description or use a voice note..."}
+                className="dc-field resize-none"
+                style={{ height: 96, ...(isRecording ? { borderColor: "#0d5347", background: "rgba(13,83,71,.06)" } : {}) }}
               />
             </div>
 
             {/* Hardware Controls */}
             <div>
-              <label className="text-sm font-bold text-slate-800 mb-3 block">Attach Evidence</label>
+              <label className="dc-mono mb-3 block">Attach evidence</label>
               <div className="grid grid-cols-2 gap-4">
                 
                 {/* Photo Capture Card */}
                 <label className="relative cursor-pointer group">
                   <input type="file" accept="image/*" capture="environment" onChange={handlePhotoCapture} className="peer sr-only" />
-                  <div className={`bg-white p-6 rounded-2xl border-2 transition-all text-center flex flex-col items-center gap-3 ${photoPreview ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}>
+                  <div className="dc-surface-soft p-6 text-center flex flex-col items-center gap-3" style={photoPreview ? { borderColor: "#0d5347" } : undefined}>
                     {photoPreview ? (
-                      <div className="w-12 h-12 rounded-lg bg-cover bg-center shadow-sm" style={{ backgroundImage: `url(${photoPreview})` }} />
+                      <div className="w-12 h-12 rounded-lg bg-cover bg-center" style={{ backgroundImage: `url(${photoPreview})` }} />
                     ) : (
                       <Camera className="w-8 h-8 text-slate-400 group-hover:text-primary transition-colors" />
                     )}
                     <span className={`font-semibold text-sm ${photoPreview ? 'text-primary' : 'text-slate-700'}`}>
-                      {photoPreview ? "Retake Photo" : "Take Photo"}
+                      {photoPreview ? "Retake photo" : "Take photo"}
                     </span>
                   </div>
                 </label>
-                
+
                 {/* Voice Record Card */}
-                <div onClick={isRecording ? stopRecording : (!audioBlob ? startRecording : undefined)} className={`cursor-pointer bg-white p-6 rounded-2xl border-2 transition-all text-center flex flex-col items-center gap-3 ${isRecording ? 'border-alert bg-alert/5 shadow-[0_0_15px_rgba(196,69,61,0.2)]' : audioBlob ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}>
+                <div onClick={isRecording ? stopRecording : (!audioBlob ? startRecording : undefined)} className="cursor-pointer dc-surface-soft p-6 text-center flex flex-col items-center gap-3" style={isRecording ? { borderColor: "#b23c2e" } : audioBlob ? { borderColor: "#0d5347" } : undefined}>
                   
                   {isRecording ? (
                     <Square className="w-8 h-8 text-alert animate-pulse" />
@@ -328,7 +328,7 @@ export default function ReportPage() {
 
               {/* Audio Playback Section */}
               {audioUrl && !isRecording && (
-                <div className="mt-4 p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between gap-4">
+                <div className="mt-4 p-4 rounded-xl flex items-center justify-between gap-4" style={{ background: "rgba(13,83,71,.06)", border: "1.5px solid rgba(13,83,71,.25)" }}>
                   <audio src={audioUrl} controls className="h-10 flex-grow" />
                   <button type="button" onClick={clearAudio} className="text-slate-400 hover:text-alert transition-colors">
                     <X className="w-5 h-5" />
@@ -340,14 +340,15 @@ export default function ReportPage() {
         </form>
       </main>
 
-      <footer className="fixed bottom-0 w-full max-w-md p-6 bg-white border-t border-gray-100 z-10 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
-        <button 
+      <footer className="fixed bottom-0 w-full max-w-md p-6 z-10" style={{ background: "#eee8da", borderTop: "1.5px solid rgba(18,21,15,.16)" }}>
+        <button
           form="report-form"
-          type="submit" 
-          disabled={loading || (!photoFile && !audioBlob && !description)} // Enable if they just typed a description too!
-          className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all flex justify-center items-center gap-2 active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100"
+          type="submit"
+          disabled={loading || (!photoFile && !audioBlob && !description)}
+          className="dc-pill w-full"
+          style={{ minHeight: 56, fontSize: 17 }}
         >
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Submit Report <ChevronRight className="w-5 h-5" /></>}
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Submit report <ChevronRight className="w-5 h-5" /></>}
         </button>
       </footer>
 

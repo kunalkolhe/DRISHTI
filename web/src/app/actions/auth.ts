@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 export async function registerUser(formData: FormData) {
   const name = formData.get("name") as string;
@@ -101,6 +102,7 @@ export async function loginUser(formData: FormData) {
 export async function logoutUser() {
   const cookieStore = await cookies();
   cookieStore.delete("session_user_id");
+  redirect("/login");
 }
 
 export async function getSession() {

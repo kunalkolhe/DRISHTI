@@ -22,53 +22,54 @@ export default async function AdminDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen" style={{ background: "#eee8da" }}>
       <div className="max-w-6xl mx-auto px-6 py-12">
-        
+
         <div className="mb-10">
-          <h1 className="text-3xl font-display font-extrabold text-slate-800">Admin Command Center</h1>
-          <p className="text-slate-500 mt-2">System overview and management dashboard.</p>
+          <div className="dc-eyebrow mb-4">Admin command center</div>
+          <h1 className="text-3xl font-display font-semibold text-slate-800" style={{ letterSpacing: "-0.04em" }}>System overview</h1>
+          <p className="text-slate-500 mt-2">Users, assets and complaints across every department.</p>
         </div>
 
         {/* System KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between h-40">
+          <div className="dc-surface p-6 flex flex-col justify-between h-40">
             <div className="flex justify-between items-start">
-              <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Users</span>
+              <span className="dc-mono">Total users</span>
               <div className="p-2 bg-primary/10 text-primary rounded-xl"><Users className="w-5 h-5" /></div>
             </div>
-            <h2 className="text-5xl font-display font-black text-slate-800">{totalUsers}</h2>
+            <h2 className="text-5xl font-display font-semibold text-slate-800">{totalUsers}</h2>
           </div>
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between h-40">
+          <div className="dc-surface p-6 flex flex-col justify-between h-40">
             <div className="flex justify-between items-start">
-              <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Assets</span>
+              <span className="dc-mono">Total assets</span>
               <div className="p-2 bg-accent/10 text-accent rounded-xl"><Database className="w-5 h-5" /></div>
             </div>
-            <h2 className="text-5xl font-display font-black text-slate-800">{totalAssets}</h2>
+            <h2 className="text-5xl font-display font-semibold text-slate-800">{totalAssets}</h2>
           </div>
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between h-40">
+          <div className="dc-surface p-6 flex flex-col justify-between h-40">
             <div className="flex justify-between items-start">
-              <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Reports</span>
+              <span className="dc-mono">Total reports</span>
               <div className="p-2 bg-slate-100 text-slate-600 rounded-xl"><CheckCircle2 className="w-5 h-5" /></div>
             </div>
-            <h2 className="text-5xl font-display font-black text-slate-800">{totalComplaints}</h2>
+            <h2 className="text-5xl font-display font-semibold text-slate-800">{totalComplaints}</h2>
           </div>
-          <div className="bg-alert p-6 rounded-3xl shadow-xl shadow-alert/20 flex flex-col justify-between h-40">
+          <div className="p-6 flex flex-col justify-between h-40" style={{ background: "#b23c2e", borderRadius: 22, border: "1.5px solid rgba(18,21,15,.55)", boxShadow: "6px 8px 0 rgba(18,21,15,.85)" }}>
             <div className="flex justify-between items-start">
-              <span className="text-sm font-bold text-white/80 uppercase tracking-wider">Pending (OPEN)</span>
+              <span className="dc-mono" style={{ color: "rgba(255,255,255,.8)" }}>Pending (open)</span>
               <div className="p-2 bg-white/20 text-white rounded-xl"><AlertCircle className="w-5 h-5" /></div>
             </div>
-            <h2 className="text-5xl font-display font-black text-white">{openComplaints}</h2>
+            <h2 className="text-5xl font-display font-semibold text-white">{openComplaints}</h2>
           </div>
         </div>
 
         {/* User Management */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-slate-50 flex justify-between items-center">
-            <h3 className="font-bold text-slate-800 text-lg">System Users</h3>
+        <div className="dc-surface overflow-hidden" style={{ padding: 0 }}>
+          <div className="p-6 flex justify-between items-center" style={{ borderBottom: "1.5px solid rgba(18,21,15,.14)" }}>
+            <h3 className="font-semibold text-slate-800 text-lg">System users</h3>
           </div>
-          
-          <div className="divide-y divide-gray-100">
+
+          <div className="divide-y" style={{ borderColor: "rgba(18,21,15,.1)" }}>
             {recentUsers.map(user => (
               <div key={user.id} className="p-6 flex items-center justify-between">
                 <div>

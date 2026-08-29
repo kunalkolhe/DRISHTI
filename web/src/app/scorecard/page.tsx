@@ -32,48 +32,45 @@ export default async function ScorecardPage() {
         
         {/* Title Section */}
         <div className="mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/10 text-success font-semibold text-sm mb-4">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-            Live City Metrics
-          </div>
-          <h1 className="text-4xl md:text-5xl font-display font-extrabold text-slate-800 tracking-tight">
-            Public Scorecard
+          <div className="dc-eyebrow mb-4">Live city metrics</div>
+          <h1 className="text-4xl md:text-5xl font-display font-semibold text-slate-800" style={{ letterSpacing: "-0.045em" }}>
+            Public scorecard
           </h1>
           <p className="text-lg text-slate-500 mt-4 max-w-2xl leading-relaxed">
-            Total transparency into how our city's infrastructure is performing and how quickly issues are being resolved.
+            Total transparency into how the city&apos;s infrastructure is performing and how quickly issues are being resolved.
           </p>
         </div>
 
         {/* KPI Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between h-40">
+          <div className="dc-surface p-6 flex flex-col justify-between h-40">
             <div className="flex justify-between items-start">
-              <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Assets Tracked</span>
+              <span className="dc-mono">Total assets tracked</span>
               <div className="p-2 bg-primary/10 text-primary rounded-xl"><Activity className="w-5 h-5" /></div>
             </div>
             <h2 className="text-5xl font-display font-black text-slate-800">{totalAssets}</h2>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between h-40">
+          <div className="dc-surface p-6 flex flex-col justify-between h-40">
             <div className="flex justify-between items-start">
-              <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Issues Reported</span>
+              <span className="dc-mono">Total issues reported</span>
               <div className="p-2 bg-alert/10 text-alert rounded-xl"><Users className="w-5 h-5" /></div>
             </div>
             <h2 className="text-5xl font-display font-black text-slate-800">{totalComplaints}</h2>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col justify-between h-40">
+          <div className="dc-surface p-6 flex flex-col justify-between h-40">
             <div className="flex justify-between items-start">
-              <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">Issues Fixed</span>
+              <span className="dc-mono">Issues fixed</span>
               <div className="p-2 bg-success/10 text-success rounded-xl"><CheckCircle2 className="w-5 h-5" /></div>
             </div>
             <h2 className="text-5xl font-display font-black text-slate-800">{resolvedComplaints}</h2>
           </div>
 
-          <div className="bg-primary p-6 rounded-3xl shadow-xl shadow-primary/20 flex flex-col justify-between h-40">
+          <div className="p-6 flex flex-col justify-between h-40" style={{ background: "#0d5347", borderRadius: 22, border: "1.5px solid rgba(18,21,15,.55)", boxShadow: "6px 8px 0 rgba(18,21,15,.85)" }}>
             <div className="flex justify-between items-start">
-              <span className="text-sm font-bold text-primary-foreground/80 uppercase tracking-wider">Resolution Rate</span>
+              <span className="dc-mono" style={{ color: "rgba(248,251,240,.75)" }}>Resolution rate</span>
               <div className="p-2 bg-white/20 text-white rounded-xl"><TrendingUp className="w-5 h-5" /></div>
             </div>
             <div className="flex items-baseline gap-2">
@@ -85,12 +82,12 @@ export default async function ScorecardPage() {
         </div>
 
         {/* Live Feed */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100 bg-slate-50">
-            <h3 className="font-bold text-slate-800 text-lg">Recent Reports Activity</h3>
+        <div className="dc-surface overflow-hidden" style={{ padding: 0 }}>
+          <div className="p-6" style={{ borderBottom: "1.5px solid rgba(18,21,15,.14)" }}>
+            <h3 className="font-semibold text-slate-800 text-lg">Recent reports activity</h3>
           </div>
-          
-          <div className="divide-y divide-gray-100">
+
+          <div className="divide-y" style={{ borderColor: "rgba(18,21,15,.1)" }}>
             {recentComplaints.length === 0 ? (
               <div className="p-12 text-center text-slate-400 font-medium">No complaints logged yet.</div>
             ) : (

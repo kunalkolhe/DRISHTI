@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Inter, Manrope } from "next/font/google";
+import { Inter, Manrope, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import NavbarGate from "@/components/NavbarGate";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -10,6 +11,16 @@ const inter = Inter({
 
 const manrope = Manrope({
   variable: "--font-manrope",
+  subsets: ["latin"],
+});
+
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains",
   subsets: ["latin"],
 });
 
@@ -26,9 +37,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} ${manrope.variable} antialiased`}
+        className={`${inter.variable} ${manrope.variable} ${bricolage.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <Navbar />
+        <NavbarGate>
+          <Navbar />
+        </NavbarGate>
         {children}
       </body>
     </html>

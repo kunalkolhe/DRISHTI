@@ -27,8 +27,10 @@ enum AssetCategory {
 enum ComplaintStatus {
   OPEN
   ROUTED
+  FIXED_PENDING_CONFIRMATION
   CLOSED
   REJECTED
+  REOPENED
 }
 
 model User {
@@ -42,6 +44,7 @@ model User {
   createdAt        DateTime @default(now())
 
   complaints       Complaint[] @relation("CitizenComplaints")
+  assignedTasks    Complaint[] @relation("WorkerAssignments")
   serviceHistories ServiceHistory[] @relation("WorkerServices")
 }
 
@@ -56,6 +59,9 @@ model Asset {
   warrantyStatus   String?
   replacementCost  Float?
   riskScore        Float         @default(0.0)
+  photoUrl         String?
+  maintenanceIntervalDays Int?
+  lastMaintenanceDate DateTime?
   createdAt        DateTime      @default(now())
 
   complaints       Complaint[]
@@ -74,11 +80,17 @@ model Complaint {
   gpsLon           Float?
   originalPhotoUrl String
   voiceNoteUrl     String?
+  repairPhotoUrl   String?
+  workerNotes      String?
+  resolvedAt       DateTime?
+  resolvedByWorkerId Int?
+  assignedToWorkerId Int?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
   asset            Asset?          @relation(fields: [assetId], references: [id])
   citizen          User            @relation("CitizenComplaints", fields: [citizenId], references: [id])
+  assignedWorker   User?           @relation("WorkerAssignments", fields: [assignedToWorkerId], references: [id])
 }
 
 model ServiceHistory {
@@ -87,6 +99,8 @@ model ServiceHistory {
   workerId         Int
   repairPhotoUrl   String
   repairCost       Float?
+  type             String   @default("REPAIR") // "REPAIR" or "MAINTENANCE"
+  notes            String?
   date             DateTime @default(now())
 
   asset            Asset    @relation(fields: [assetId], references: [id])

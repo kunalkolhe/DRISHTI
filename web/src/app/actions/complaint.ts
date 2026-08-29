@@ -96,3 +96,53 @@ export async function createComplaint(formData: FormData) {
     return { success: false, error: "Server error while submitting complaint." };
   }
 }
+
+export async function resolveComplaint(formData: FormData) {
+  const session = await getSession();
+  if (!session || session.role !== 'FIELD_WORKER') {
+    return { success: false, error: "Unauthorized. Only Field Workers can resolve issues." };
+  }
+
+  const complaintId = parseInt(formData.get("complaintId") as string);
+  const photo = formData.get("photo") as File;
+  const notes = formData.get("notes") as string;
+
+  if (!complaintId || !photo || photo.size === 0) {
+    return { success: false, error: "Missing repair photo or complaint ID." };
+  }
+
+  try {
+    const buffer = Buffer.from(await photo.arrayBuffer());
+    const fileName = `${Date.now()}-${session.id}-repair.webp`;
+    
+    // Ensure uploads directory exists
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    const filePath = path.join(uploadsDir, fileName);
+    fs.writeFileSync(filePath, buffer);
+    const publicUrl = `uploads/${fileName}`;
+
+    await prisma.complaint.update({
+      where: { id: complaintId },
+      data: {
+        status: "FIXED_PENDING_CONFIRMATION",
+        repairPhotoUrl: publicUrl,
+        workerNotes: notes,
+        resolvedAt: new Date(),
+        resolvedByWorkerId: session.id,
+      }
+    });
+
+    revalidatePath("/worker");
+    revalidatePath("/scorecard");
+    revalidatePath("/admin");
+    
+    return { success: true };
+  } catch (err) {
+    console.error("Error resolving complaint:", err);
+    return { success: false, error: "Server error resolving complaint." };
+  }
+}

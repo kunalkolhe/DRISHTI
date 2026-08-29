@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { registerUser, loginUser } from "@/app/actions/auth";
-import { Loader2, AlertCircle, CheckCircle2, User, Mail, Phone, Lock, BadgeCheck } from "lucide-react";
-import Link from "next/link";
+import { Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(false); // Default to registration since user asked for full name/email
+  const [isLogin, setIsLogin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -25,161 +25,127 @@ export default function AuthPage() {
 
     if (result.success) {
       if (isLogin) {
-        setSuccessMsg("Logged in successfully! Redirecting...");
-        // In a real app, redirect to dashboard
-        setTimeout(() => window.location.href = "/", 500);
+        setSuccessMsg("Logged in. Redirecting…");
+        setTimeout(() => {
+          if (result.user?.role === "ADMIN") {
+            window.location.href = "/admin";
+          } else if (result.user?.role === "FIELD_WORKER") {
+            window.location.href = "/worker";
+          } else {
+            window.location.href = "/";
+          }
+        }, 500);
       } else {
-        setSuccessMsg("Account created successfully! You can now log in.");
+        setSuccessMsg("Account created. You can sign in now.");
         setIsLogin(true);
       }
     } else {
       setErrorMsg(result.error || "Authentication failed.");
     }
-    
+
     setLoading(false);
   }
 
+  const tab = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: "16px 0",
+    fontWeight: 600,
+    fontSize: 14,
+    background: active ? "#fefcf5" : "transparent",
+    color: active ? "#0d5347" : "#8a8676",
+    borderTopStyle: "none",
+    borderLeftStyle: "none",
+    borderRightStyle: "none",
+    borderBottomWidth: "2px",
+    borderBottomStyle: "solid",
+    borderBottomColor: active ? "#0d5347" : "transparent",
+    cursor: "pointer",
+  });
+
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 selection:bg-accent/20">
-      
-      <div className="w-full max-w-md mt-12 bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-        
-        {/* Toggle Header */}
-        <div className="flex border-b border-gray-100">
-          <button 
-            onClick={() => { setIsLogin(false); setErrorMsg(""); setSuccessMsg(""); }}
-            className={`flex-1 py-4 font-bold text-sm transition-colors ${!isLogin ? 'text-primary border-b-2 border-primary' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Create Account
+    <div style={{ minHeight: "100vh", background: "#eee8da", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div className="dc-eyebrow" style={{ marginBottom: 20 }}>
+        {isLogin ? "Welcome back" : "Join DRISHTI"}
+      </div>
+
+      <div className="dc-surface" style={{ width: "100%", maxWidth: 440, overflow: "hidden", padding: 0 }}>
+        <div style={{ display: "flex", borderBottomWidth: "1.5px", borderBottomStyle: "solid", borderBottomColor: "rgba(18,21,15,.22)" }}>
+          <button type="button" onClick={() => { setIsLogin(false); setErrorMsg(""); setSuccessMsg(""); }} style={tab(!isLogin)}>
+            Create account
           </button>
-          <button 
-            onClick={() => { setIsLogin(true); setErrorMsg(""); setSuccessMsg(""); }}
-            className={`flex-1 py-4 font-bold text-sm transition-colors ${isLogin ? 'text-primary border-b-2 border-primary' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            Sign In
+          <button type="button" onClick={() => { setIsLogin(true); setErrorMsg(""); setSuccessMsg(""); }} style={tab(isLogin)}>
+            Sign in
           </button>
         </div>
 
-        <div className="p-8">
-          
-          <div className="mb-8">
-            <h2 className="text-2xl font-display font-extrabold text-slate-800">
-              {isLogin ? "Welcome back" : "Join DRISHTI"}
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">
-              {isLogin ? "Sign in to track your reports." : "Register to report and track civic issues."}
-            </p>
-          </div>
+        <div style={{ padding: 32 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.04em", margin: 0 }}>
+            {isLogin ? "Sign in to track your reports" : "Register to report civic issues"}
+          </h1>
+          <p style={{ color: "#6a6555", fontSize: 14.5, margin: "8px 0 0" }}>
+            Only your mobile number and complaint history are stored.
+          </p>
 
           {errorMsg && (
-            <div className="mb-6 p-4 bg-alert/10 border border-alert/20 text-alert rounded-xl text-sm font-medium flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              {errorMsg}
+            <div style={{ marginTop: 22, padding: 14, borderRadius: 14, background: "rgba(178,60,46,.1)", border: "1.5px solid rgba(178,60,46,.3)", color: "#b23c2e", fontSize: 14, display: "flex", gap: 10, alignItems: "center" }}>
+              <AlertCircle className="w-5 h-5 shrink-0" /> {errorMsg}
             </div>
           )}
-
           {successMsg && (
-            <div className="mb-6 p-4 bg-success/10 border border-success/20 text-success rounded-xl text-sm font-medium flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 shrink-0" />
-              {successMsg}
+            <div style={{ marginTop: 22, padding: 14, borderRadius: 14, background: "rgba(13,83,71,.1)", border: "1.5px solid rgba(13,83,71,.3)", color: "#0d5347", fontSize: 14, display: "flex", gap: 10, alignItems: "center" }}>
+              <CheckCircle2 className="w-5 h-5 shrink-0" /> {successMsg}
             </div>
           )}
 
-          <form action={handleSubmit} className="space-y-5">
-            
+          <form action={handleSubmit} style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 18 }}>
             {!isLogin && (
               <>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Full Name</label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input 
-                      type="text" 
-                      name="name" 
-                      required={!isLogin} 
-                      placeholder="Jane Doe" 
-                      className="w-full bg-background border border-gray-200 text-slate-800 text-base rounded-xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" 
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input 
-                      type="email" 
-                      name="email" 
-                      placeholder="jane@example.com (Optional)" 
-                      className="w-full bg-background border border-gray-200 text-slate-800 text-base rounded-xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" 
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Account Type</label>
-                  <div className="relative">
-                    <BadgeCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <select 
-                      name="role" 
-                      required={!isLogin}
-                      className="w-full bg-background border border-gray-200 text-slate-800 text-base rounded-xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none"
-                    >
-                      <option value="CITIZEN">Citizen (Report Issues)</option>
-                      <option value="FIELD_WORKER">Field Worker (Resolve Issues)</option>
-                      <option value="ADMIN">Administrator (Manage System)</option>
-                    </select>
-                  </div>
-                </div>
+                <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span className="dc-mono">Full name</span>
+                  <input type="text" name="name" required placeholder="Jane Doe" className="dc-field" />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span className="dc-mono">Email address (optional)</span>
+                  <input type="email" name="email" placeholder="jane@example.com" className="dc-field" />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span className="dc-mono">Account type</span>
+                  <select name="role" required className="dc-field">
+                    <option value="CITIZEN">Citizen — report issues</option>
+                    <option value="FIELD_WORKER">Field worker — resolve issues</option>
+                    <option value="ADMIN">Administrator — manage system</option>
+                  </select>
+                </label>
               </>
             )}
 
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
-                {isLogin ? "Mobile Number or Email" : "Mobile Number"}
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input 
-                  type={isLogin ? "text" : "tel"} 
-                  name={isLogin ? "identifier" : "mobileNumber"} 
-                  required 
-                  placeholder={isLogin ? "Enter mobile or email" : "9999999999"} 
-                  className="w-full bg-background border border-gray-200 text-slate-800 text-base rounded-xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" 
-                />
-              </div>
-            </div>
+            <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span className="dc-mono">{isLogin ? "Mobile number or email" : "Mobile number"}</span>
+              <input
+                type={isLogin ? "text" : "tel"}
+                name={isLogin ? "identifier" : "mobileNumber"}
+                required
+                placeholder={isLogin ? "Enter mobile or email" : "9999999999"}
+                className="dc-field"
+              />
+            </label>
 
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex justify-between">
-                <span>Password</span>
-                {isLogin && <a href="#" className="text-primary hover:underline lowercase normal-case">Forgot?</a>}
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input 
-                  type="password" 
-                  name="password" 
-                  required 
-                  placeholder="••••••••" 
-                  className="w-full bg-background border border-gray-200 text-slate-800 text-base rounded-xl pl-12 pr-4 py-3.5 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" 
-                />
+            <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span className="dc-mono">Password</span>
+              <div style={{ position: "relative" }}>
+                <input type={showPassword ? "text" : "password"} name="password" required placeholder="••••••••" className="dc-field" style={{ paddingRight: 44 }} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", cursor: "pointer", color: "#8a8676" }}>
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
-            </div>
+            </label>
 
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full mt-2 bg-primary hover:bg-primary/90 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all flex justify-center items-center gap-2 active:scale-[0.98] disabled:opacity-70"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLogin ? "Sign In" : "Create Account")}
+            <button type="submit" disabled={loading} className="dc-pill" style={{ minHeight: 56, fontSize: 17, marginTop: 4 }}>
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : isLogin ? "Sign in" : "Create account"}
             </button>
-            
           </form>
-
         </div>
       </div>
-      
     </div>
   );
 }

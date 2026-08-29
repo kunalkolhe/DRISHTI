@@ -1,48 +1,57 @@
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/app/actions/auth";
+import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock, MapPin, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Clock, MapPin, AlertCircle, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
 
 export default async function MyReportsPage() {
-  // Fetch complaints specifically for our hardcoded test citizen
+  const session = await getSession();
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  // Fetch complaints for the currently logged in citizen
   const userReports = await prisma.complaint.findMany({
     where: {
-      citizen: { email: "john.doe@example.com" }
+      citizenId: session.id
     },
     orderBy: { createdAt: "desc" },
     include: { asset: true }
   });
 
   return (
-    <div className="min-h-screen bg-background selection:bg-accent/20">
-      
+    <div className="min-h-screen" style={{ background: "#eee8da" }}>
+
       <main className="max-w-3xl mx-auto px-6 py-12">
         <div className="mb-10">
-          <h1 className="text-3xl font-display font-extrabold text-slate-800">Your Report History</h1>
-          <p className="text-slate-500 mt-2">Track the status of infrastructure issues you have reported to the city.</p>
+          <div className="dc-eyebrow mb-4">Your reports</div>
+          <h1 className="text-3xl font-display font-semibold text-slate-800" style={{ letterSpacing: "-0.04em" }}>Report history</h1>
+          <p className="text-slate-500 mt-2">Track every issue you have reported — and cast the final vote when it&apos;s fixed.</p>
         </div>
 
         {userReports.length === 0 ? (
-          <div className="bg-white p-12 rounded-3xl border border-gray-100 text-center shadow-sm">
-            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-8 h-8 text-slate-300" />
+          <div className="dc-surface p-12 text-center">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#dee8c4", border: "1.5px solid rgba(13,83,71,.35)" }}>
+              <Clock className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="font-bold text-lg text-slate-800 mb-2">No reports yet</h3>
-            <p className="text-slate-500 mb-6">You haven't reported any issues in your city yet.</p>
-            <Link href="/report" className="inline-flex items-center justify-center px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors">
-              Report an Issue
+            <h3 className="font-semibold text-lg text-slate-800 mb-2">No reports yet</h3>
+            <p className="text-slate-500 mb-6">You haven&apos;t reported any issues in your city yet.</p>
+            <Link href="/report" className="dc-pill" style={{ padding: "0 24px", minHeight: 50 }}>
+              Report an issue
             </Link>
           </div>
         ) : (
           <div className="space-y-6">
             {userReports.map((report) => (
-              <div key={report.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col md:flex-row">
+              <div key={report.id} className="dc-surface overflow-hidden flex flex-col md:flex-row" style={{ padding: 0 }}>
                 
                 {/* Photo Section */}
                 <div className="w-full md:w-48 h-48 bg-gray-100 relative shrink-0">
                   {report.originalPhotoUrl ? (
                     <Image 
-                      src={report.originalPhotoUrl.startsWith('http') ? report.originalPhotoUrl : `/${report.originalPhotoUrl}`} 
+                      src={report.originalPhotoUrl.startsWith('http') ? report.originalPhotoUrl : (report.originalPhotoUrl.startsWith('/') ? report.originalPhotoUrl : `/${report.originalPhotoUrl}`)} 
                       alt="Report evidence" 
                       fill
                       className="object-cover"
