@@ -209,6 +209,19 @@
 .drishti-balance { text-wrap: balance; }
 .drishti-pretty { text-wrap: pretty; }
 
+/* ---- Print: isolate the worker ID card ---- */
+@media print {
+  body * { visibility: hidden !important; }
+  .dc-print-card, .dc-print-card * { visibility: visible !important; }
+  .dc-print-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    box-shadow: none !important;
+  }
+  .dc-no-print { display: none !important; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .drishti-hero *,
   .drishti-hero *::before,

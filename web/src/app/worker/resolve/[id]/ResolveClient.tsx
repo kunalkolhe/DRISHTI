@@ -5,6 +5,7 @@ import { resolveComplaint } from "@/app/actions/complaint";
 import { Loader2, Camera, AlertCircle, CheckCircle2, MapPin, Navigation, QrCode, X, Type } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import { extractAssetCode } from "@/lib/qr";
 
 // Haversine formula to calculate distance in meters between two coordinates
 function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -45,12 +46,13 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
       const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
       scanner.render(
         (decodedText) => {
-          if (decodedText === assetQrCodeId) {
+          const scannedCode = extractAssetCode(decodedText);
+          if (scannedCode === assetQrCodeId) {
             setQrScanned(true);
             setShowQRScanner(false);
             scanner.clear();
           } else {
-            setErrorMsg(`Incorrect QR Code. Scanned: ${decodedText}. Expected: ${assetQrCodeId}`);
+            setErrorMsg(`Incorrect QR Code. Scanned: ${scannedCode}. Expected: ${assetQrCodeId}`);
           }
         },
         (error) => { /* ignore */ }

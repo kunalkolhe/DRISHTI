@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { getSession, logoutUser } from "@/app/actions/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
-import { CheckCircle2, Clock, MapPin, Navigation, FileCheck, LogOut, Home, CheckSquare, AlertTriangle, PlusCircle, Wrench } from "lucide-react";
+import { CheckCircle2, Clock, MapPin, Navigation, FileCheck, LogOut, Home, CheckSquare, AlertTriangle, PlusCircle, Wrench, CreditCard } from "lucide-react";
 import Image from "next/image";
 import NearbyAssets from "./NearbyAssets";
 import AddAsset from "./AddAsset";
 import MaintenanceDue from "./MaintenanceDue";
+import WorkerIdCard from "@/components/WorkerIdCard";
 
 function getSLA(createdAt: Date, severity: string | null) {
   const hours = severity === 'HIGH' ? 24 : severity === 'MEDIUM' ? 72 : 168; 
@@ -27,6 +29,19 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
 
   const params = await searchParams;
   const activeTab = params.tab || 'assigned';
+
+  const hdrs = await headers();
+  const host = hdrs.get("host");
+  const origin = host ? `${hdrs.get("x-forwarded-proto") || "http"}://${host}` : "";
+
+  // Full worker record for the ID card
+  const workerCard =
+    activeTab === 'id-card'
+      ? await prisma.user.findUnique({
+          where: { id: session.id },
+          select: { id: true, name: true, email: true, mobileNumber: true, role: true, trustScore: true, createdAt: true },
+        })
+      : null;
 
   // 1. Fetch Assets for 'nearby' tab
   let assets: any[] = [];
@@ -93,6 +108,7 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
     { id: 'reopened', label: 'Reopened', icon: AlertTriangle },
     { id: 'pending', label: 'Awaiting', icon: Clock },
     { id: 'completed', label: 'Completed', icon: CheckSquare },
+    { id: 'id-card', label: 'My ID Card', icon: CreditCard },
   ];
 
   return (
@@ -145,9 +161,10 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
               {navItems.find(i => i.id === activeTab)?.label}
             </h2>
             <p className="text-slate-500 mt-2">
-              {activeTab === 'nearby' ? "Infrastructure near your current location." : 
+              {activeTab === 'nearby' ? "Infrastructure near your current location." :
                activeTab === 'add-asset' ? "Register a new asset and generate its digital twin." :
                activeTab === 'maintenance' ? "Proactive servicing schedule for assets." :
+               activeTab === 'id-card' ? "Your DRISHTI worker credential — carry it on site." :
                `You have ${tasks.length} tasks in this category.`}
             </p>
           </header>
@@ -156,9 +173,11 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
           {activeTab === 'nearby' ? (
             <NearbyAssets assets={assets} />
           ) : activeTab === 'add-asset' ? (
-            <AddAsset />
+            <AddAsset origin={origin} />
           ) : activeTab === 'maintenance' ? (
             <MaintenanceDue assets={maintenanceAssets} />
+          ) : activeTab === 'id-card' ? (
+            workerCard ? <WorkerIdCard worker={workerCard} origin={origin} /> : <p className="text-slate-500">Could not load your credential.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {tasks.length === 0 ? (

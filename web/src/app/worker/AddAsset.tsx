@@ -2,10 +2,11 @@
 
 import { useState, useRef } from "react";
 import { createAsset } from "@/app/actions/asset";
-import { Loader2, Camera, MapPin, CheckCircle2, QrCode, AlertCircle } from "lucide-react";
+import { Loader2, Camera, MapPin, CheckCircle2, AlertCircle, Printer, ScanLine } from "lucide-react";
 import QRCode from "react-qr-code";
+import { assetUrl } from "@/lib/qr";
 
-export default function AddAsset() {
+export default function AddAsset({ origin = "" }: { origin?: string }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successData, setSuccessData] = useState<any>(null);
@@ -94,24 +95,52 @@ export default function AddAsset() {
   };
 
   if (successData) {
+    const url = assetUrl(successData.qrCodeId, origin);
     return (
       <div className="dc-surface p-8 flex flex-col items-center text-center">
-        <CheckCircle2 className="w-16 h-16 text-success mb-4" />
-        <h2 className="text-2xl font-semibold text-slate-800 mb-2">Asset registered</h2>
-        <p className="text-slate-500 mb-8">Print or fix this QR code to the physical asset.</p>
+        <CheckCircle2 className="w-16 h-16 text-success mb-4 dc-no-print" />
+        <h2 className="text-2xl font-semibold text-slate-800 mb-2 dc-no-print">Asset registered</h2>
+        <p className="text-slate-500 mb-6 dc-no-print">Print this label and fix it to the asset.</p>
 
-        <div className="p-4 rounded-2xl inline-block mb-4" style={{ background: "#fefcf5", border: "1.5px solid #12150f", boxShadow: "5px 6px 0 rgba(13,83,71,.9)" }}>
-          <QRCode value={successData.qrCodeId} size={150} />
+        {/* Printable QR label */}
+        <div
+          className="dc-print-card"
+          style={{ background: "#fefcf5", border: "1.5px solid #12150f", borderRadius: 18, padding: 20, boxShadow: "5px 6px 0 rgba(13,83,71,.9)", width: 240 }}
+        >
+          <div className="dc-mono" style={{ marginBottom: 10 }}>DRISHTI Asset Tag</div>
+          <div style={{ background: "#fff", padding: 8, borderRadius: 10, border: "1.5px solid #12150f" }}>
+            {origin ? <QRCode value={url} size={180} style={{ width: "100%", height: "auto" }} /> : <div style={{ height: 180 }} />}
+          </div>
+          <p style={{ fontFamily: "var(--font-jetbrains), monospace", fontWeight: 600, fontSize: 15, letterSpacing: ".08em", marginTop: 10 }}>
+            {successData.qrCodeId}
+          </p>
+          <p className="dc-mono" style={{ textTransform: "none", letterSpacing: 0, marginTop: 4 }}>
+            Scan for full asset history
+          </p>
         </div>
-        <p className="dc-badge" style={{ fontSize: 15, letterSpacing: ".12em" }}>
-          {successData.qrCodeId}
+
+        <div className="dc-surface-soft p-4 mt-6 text-left w-full dc-no-print">
+          <div className="dc-mono mb-2 flex items-center gap-1.5"><ScanLine className="w-3 h-3" /> When scanned, anyone sees</div>
+          <ul className="text-sm text-slate-600 space-y-1" style={{ listStyle: "disc", paddingLeft: 18 }}>
+            <li>When it was installed &amp; which department owns it</li>
+            <li>Every repair and routine maintenance, with dates</li>
+            <li>Warranty / AMC status and current health</li>
+            <li>Open complaints — and a button to report a new one</li>
+          </ul>
+        </div>
+
+        <p className="text-sm text-slate-500 mt-4 dc-no-print">
+          Next maintenance due in {successData.maintenanceIntervalDays} days.
         </p>
 
-        <p className="text-sm text-slate-500 mt-6">Next maintenance due in {successData.maintenanceIntervalDays} days.</p>
-
-        <button onClick={() => { setSuccessData(null); setCapturedPhoto(null); setPhotoPreview(null); setLocation(null); }} className="dc-pill-dark dc-pill mt-8 w-full" style={{ minHeight: 50 }}>
-          Add another asset
-        </button>
+        <div className="flex gap-3 mt-6 w-full dc-no-print">
+          <button onClick={() => window.print()} className="dc-pill-ghost flex-1" style={{ minHeight: 48 }}>
+            <Printer className="w-4 h-4" /> Print label
+          </button>
+          <button onClick={() => { setSuccessData(null); setCapturedPhoto(null); setPhotoPreview(null); setLocation(null); }} className="dc-pill dc-pill-dark flex-1" style={{ minHeight: 48 }}>
+            Add another
+          </button>
+        </div>
       </div>
     );
   }
@@ -189,6 +218,15 @@ export default function AddAsset() {
             )}
             <canvas ref={canvasRef} className="hidden" />
           </div>
+        </div>
+
+        <div className="dc-surface-soft p-4 flex items-start gap-2.5">
+          <ScanLine className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <p className="text-sm text-slate-600">
+            A permanent QR code is generated on save. Print it and fix it to the asset — scanning it
+            opens the asset&apos;s full public record (install date, every service, warranty, open
+            complaints).
+          </p>
         </div>
 
         <button type="submit" disabled={loading || !location || !capturedPhoto} className="dc-pill w-full" style={{ minHeight: 56, fontSize: 16 }}>

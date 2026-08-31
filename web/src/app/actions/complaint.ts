@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/app/actions/auth";
+import { getDepartmentContact } from "@/lib/departments";
+import { extractAssetCode } from "@/lib/qr";
 import { revalidatePath } from "next/cache";
 import fs from "fs";
 import path from "path";
@@ -32,9 +34,11 @@ async function saveFileLocally(file: File | null): Promise<string | null> {
 }
 
 export async function createComplaint(formData: FormData) {
-  const qrCodeId = formData.get("qrCodeId") as string;
+  const rawQr = formData.get("qrCodeId") as string;
+  const qrCodeId = rawQr ? extractAssetCode(rawQr) : rawQr;
   const severity = formData.get("severity") as string;
   const description = formData.get("description") as string;
+  const category = formData.get("category") as string | null;
   const address = formData.get("address") as string;
   const gpsLat = formData.get("gpsLat") as string;
   const gpsLon = formData.get("gpsLon") as string;
@@ -62,6 +66,11 @@ export async function createComplaint(formData: FormData) {
       return { success: false, error: "You must be logged in to report an issue. Please login from the menu." };
     }
 
+    const citizen = await prisma.user.findUnique({
+      where: { id: session.id },
+      select: { name: true, email: true, mobileNumber: true },
+    });
+
     // 3. Save files securely
     const photoUrl = await saveFileLocally(photoFile);
     const voiceNoteUrl = await saveFileLocally(voiceFile);
@@ -71,12 +80,20 @@ export async function createComplaint(formData: FormData) {
     }
 
     // 4. Create the complaint
+    // The schema has no dedicated category column yet, so keep the citizen's
+    // chosen category on the record by tagging the description.
+    const categoryLabel = category ? getDepartmentContact(category).label : null;
+    const finalDescription =
+      [categoryLabel ? `(${categoryLabel})` : null, description?.trim() || null]
+        .filter(Boolean)
+        .join(" ") || null;
+
     const complaint = await prisma.complaint.create({
       data: {
         assetId: asset ? asset.id : null,
         citizenId: session.id,
         severity: severity || "MEDIUM",
-        description: description || null,
+        description: finalDescription,
         address: address || null,
         gpsLat: gpsLat ? parseFloat(gpsLat) : null,
         gpsLon: gpsLon ? parseFloat(gpsLon) : null,
@@ -90,7 +107,7 @@ export async function createComplaint(formData: FormData) {
     revalidatePath("/admin/dashboard");
     revalidatePath("/report");
     
-    return { success: true, complaint };
+    return { success: true, complaint, citizen };
   } catch (error) {
     console.error("Failed to submit complaint:", error);
     return { success: false, error: "Server error while submitting complaint." };
