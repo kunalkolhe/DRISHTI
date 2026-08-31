@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# runtime user uploads (local dev object store — use MinIO/S3 in prod)
+/public/uploads/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
