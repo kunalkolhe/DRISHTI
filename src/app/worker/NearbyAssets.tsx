@@ -3,6 +3,16 @@
 import { useState, useEffect } from "react";
 import { MapPin, Navigation, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { prettyCategory } from "@/lib/assetTypes";
+
+type NearbyAsset = {
+  id: number;
+  category: string;
+  qrCodeId: string;
+  department: string;
+  gpsLat: number;
+  gpsLon: number;
+};
 
 function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3; // Radius of the earth in m
@@ -16,29 +26,32 @@ function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number,
   return R * c; 
 }
 
-export default function NearbyAssets({ assets }: { assets: any[] }) {
-  const [location, setLocation] = useState<{lat: number, lon: number} | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
+export default function NearbyAssets({ assets }: { assets: NearbyAsset[] }) {
+  const supportsGeolocation = typeof navigator !== "undefined" && !!navigator.geolocation;
 
+  const [location, setLocation] = useState<{lat: number, lon: number} | null>(null);
+  const [loading, setLoading] = useState(supportsGeolocation);
+  const [errorMsg, setErrorMsg] = useState(
+    supportsGeolocation ? "" : "Geolocation is not supported by your browser."
+  );
+
+  // Ask the browser for a GPS fix — a genuine subscription to an external
+  // system, so both outcomes are handled inside the async callbacks rather
+  // than synchronously in the effect body.
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
-          setLoading(false);
-        },
-        (err) => {
-          setErrorMsg("Could not access your GPS location. Please enable location services.");
-          setLoading(false);
-        },
-        { enableHighAccuracy: true }
-      );
-    } else {
-      setErrorMsg("Geolocation is not supported by your browser.");
-      setLoading(false);
-    }
-  }, []);
+    if (!supportsGeolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        setLoading(false);
+      },
+      () => {
+        setErrorMsg("Could not access your GPS location. Please enable location services.");
+        setLoading(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  }, [supportsGeolocation]);
 
   if (loading) {
     return (
@@ -86,7 +99,7 @@ export default function NearbyAssets({ assets }: { assets: any[] }) {
             <div key={asset.id} className="dc-surface-soft p-5 flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-slate-800">{asset.category.replace('_', ' ')}</h3>
+                  <h3 className="font-semibold text-slate-800">{prettyCategory(asset.category)}</h3>
                   <span className="dc-badge">
                     {asset.distance < 1000 ? `${Math.round(asset.distance)}m` : `${(asset.distance / 1000).toFixed(1)}km`}
                   </span>

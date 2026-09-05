@@ -304,9 +304,16 @@ export function getEscalationChain(
   };
   // de-dupe by id (CPGRAMS may appear once)
   const seen = new Set<string>();
-  return [deptAuthority, ...jurisdiction.authorities].filter((a) => {
+  const chain = [deptAuthority, ...jurisdiction.authorities].filter((a) => {
     if (seen.has(a.id)) return false;
     seen.add(a.id);
     return true;
   });
+
+  // TEMP dev override: route every recipient in the "Send to" checklist to a
+  // real test inbox while keeping their real role/name labels (e.g. "Ward
+  // Officer — Kothrud" still shows, it just routes to the test address).
+  // Blank out NEXT_PUBLIC_TEST_CC_EMAIL in .env to restore the real ones.
+  const testEmail = process.env.NEXT_PUBLIC_TEST_CC_EMAIL;
+  return testEmail ? chain.map((a) => ({ ...a, email: testEmail })) : chain;
 }

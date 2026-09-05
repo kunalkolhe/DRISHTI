@@ -1,19 +1,35 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { createComplaint } from "@/app/actions/complaint";
 import { sendComplaintEmail } from "@/app/actions/sendComplaintEmail";
 import { resolveArea } from "@/app/actions/resolveArea";
+import { lookupAsset, type AssetLookup } from "@/app/actions/asset";
 import { extractAssetCode } from "@/lib/qr";
 import { Camera, AlertCircle, QrCode, Loader2, CheckCircle2, ChevronRight, Mic, Square, X, Type, FileAudio, MapPin, Mail, Building2, Copy, Check, ChevronDown, Landmark } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
+
+// The Web Speech API has no official DOM lib types yet — a minimal local
+// shape avoids `any` while covering what this page actually uses.
+type SpeechRecognitionResultLike = { isFinal: boolean; 0: { transcript: string } };
+type SpeechRecognitionEventLike = { resultIndex: number; results: ArrayLike<SpeechRecognitionResultLike> };
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: unknown) => void) | null;
+};
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 import {
   DEPARTMENT_CONTACTS,
   ISSUE_CATEGORIES,
   getDepartmentContact,
   draftComplaintEmail,
   buildMailtoLink,
+  buildGmailComposeLink,
 } from "@/lib/departments";
 import {
   JURISDICTIONS,
@@ -24,7 +40,7 @@ import {
   type AreaType,
 } from "@/lib/jurisdictions";
 
-export default function ReportPage() {
+function ReportPageInner() {
   const searchParams = useSearchParams();
   const initialAssetId = searchParams.get("asset") || "";
 
@@ -40,17 +56,33 @@ export default function ReportPage() {
   const [address, setAddress] = useState("");
   const [location, setLocation] = useState<{lat: number, lon: number} | null>(null);
 
-  // Auto-email feature
-  const [sendEmail, setSendEmail] = useState(false);
-  const [ccEmail, setCcEmail] = useState("");
+  // Scanned / linked asset — its registered details auto-fill the form so the
+  // citizen doesn't re-enter what the field worker already recorded.
+  const [linkedAsset, setLinkedAsset] = useState<AssetLookup | null>(null);
+  const [assetLoading, setAssetLoading] = useState(false);
+  const [assetMsg, setAssetMsg] = useState("");
+
+  // Auto-email feature — on by default: routing the complaint to the
+  // authorities is the core of the platform, so the citizen opts out, not in.
+  const [sendEmail, setSendEmail] = useState(true);
+  // Dev convenience: pre-fill the CC field from .env for testing (blank in
+  // production unless NEXT_PUBLIC_TEST_CC_EMAIL is set).
+  const [ccEmail, setCcEmail] = useState(process.env.NEXT_PUBLIC_TEST_CC_EMAIL || "");
   const [emailDraft, setEmailDraft] = useState<
-    { to: string; cc: string; subject: string; body: string; mailto: string } | null
+    { to: string; cc: string; subject: string; body: string; mailto: string; gmail: string } | null
   >(null);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [copied, setCopied] = useState(false);
   const [emailSent, setEmailSent] = useState<
     { mode: "smtp" | "dummy"; previewUrl: string | null } | { error: string } | null
   >(null);
+  // Tracks the manual Gmail/mail-app hand-off, since we can't detect the
+  // actual "Send" click in an external tab — the citizen confirms it here.
+  const [manualSendOpened, setManualSendOpened] = useState(false);
+  const [manualSendAcked, setManualSendAcked] = useState(false);
+  // Screen 3 ("Email sent") — shown only after the email is actually sent
+  // (real SMTP delivery, or the citizen taps "I've sent it" on screen 2).
+  const [showSentModal, setShowSentModal] = useState(false);
 
   // Jurisdiction + who to escalate to
   const [jurisdictionKey, setJurisdictionKey] = useState("");
@@ -92,6 +124,38 @@ export default function ReportPage() {
     }
   };
 
+  // Look an asset up by its QR code / ID and auto-fill the whole form from
+  // what the field worker registered — category, department, area and the
+  // exact GPS point. The citizen then only needs a photo and a description.
+  const prefillFromAsset = async (rawCode: string) => {
+    const code = extractAssetCode((rawCode || "").trim());
+    if (!code) return;
+    setAssetId(code);
+    setAssetLoading(true);
+    setAssetMsg("");
+    const r = await lookupAsset(code);
+    setAssetLoading(false);
+    if (!r.ok) {
+      setLinkedAsset(null);
+      setAssetMsg(r.error);
+      return;
+    }
+    const a = r.asset;
+    setLinkedAsset(a);
+    setCategory(a.issueCategory);
+    setLocation({ lat: a.gpsLat, lon: a.gpsLon });
+    setAddress(a.area || `Asset ${a.qrCodeId} — registered location`);
+    setAssetMsg("");
+    // Resolve the ward / jurisdiction straight from the asset's coordinates.
+    detectArea({ lat: a.gpsLat, lon: a.gpsLon, text: a.area ?? undefined });
+  };
+
+  const clearLinkedAsset = () => {
+    setLinkedAsset(null);
+    setAssetId("");
+    setAssetMsg("");
+  };
+
   const deptContact = category ? getDepartmentContact(category) : null;
 
   const jurisdiction =
@@ -123,37 +187,56 @@ export default function ReportPage() {
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const speechRecognitionRef = useRef<any>(null); // For Speech-to-Text
+  const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   // Initialize QR Scanner when modal opens
   useEffect(() => {
-    if (showQRScanner) {
-      const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-      scanner.render(
-        (decodedText) => {
-          setAssetId(extractAssetCode(decodedText));
-          setShowQRScanner(false);
-          scanner.clear();
-        },
-        (error) => { /* ignore frequent scan errors */ }
-      );
+    if (!showQRScanner) return;
 
-      return () => {
-        scanner.clear().catch(e => console.error("Failed to clear scanner", e));
-      };
-    }
+    const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+    let done = false;
+
+    scanner.render(
+      (decodedText) => {
+        if (done) return;
+        done = true;
+        // Just close the modal — the cleanup below stops the camera. Calling
+        // scanner.clear() here too races the cleanup ("already under transition").
+        setShowQRScanner(false);
+        prefillFromAsset(decodedText);
+      },
+      () => { /* ignore frequent scan errors */ }
+    );
+
+    return () => {
+      scanner.clear().catch(() => { /* scanner already stopped */ });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showQRScanner]);
+
+  // Arrived from an asset page (/report?asset=DRISHTI-XXXX) — auto-fill too.
+  const didPrefillFromQuery = useRef(false);
+  useEffect(() => {
+    if (didPrefillFromQuery.current || !initialAssetId) return;
+    didPrefillFromQuery.current = true;
+    prefillFromAsset(initialAssetId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAssetId]);
 
   // Setup SpeechRecognition
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const w = window as unknown as {
+        SpeechRecognition?: SpeechRecognitionConstructor;
+        webkitSpeechRecognition?: SpeechRecognitionConstructor;
+      };
+      const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true; // Show text as they speak
-        
-        recognition.onresult = (event: any) => {
+
+        recognition.onresult = (event) => {
           let finalTranscript = "";
           for (let i = event.resultIndex; i < event.results.length; ++i) {
             if (event.results[i].isFinal) {
@@ -166,7 +249,7 @@ export default function ReportPage() {
           }
         };
 
-        recognition.onerror = (e: any) => console.log("Speech recognition error", e);
+        recognition.onerror = (e) => console.log("Speech recognition error", e);
         speechRecognitionRef.current = recognition;
       }
     }
@@ -207,7 +290,7 @@ export default function ReportPage() {
       if (speechRecognitionRef.current) {
         speechRecognitionRef.current.start();
       }
-    } catch (err) {
+    } catch {
       alert("Microphone access denied or not available.");
     }
   };
@@ -266,11 +349,21 @@ export default function ReportPage() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg("");
-    
+    // Never carry a previous attempt's "sent" state into a new submission.
+    setEmailDraft(null);
+    setEmailSent(null);
+    setShowSentModal(false);
+    setManualSendOpened(false);
+    setManualSendAcked(false);
+    setShowEmailPreview(false);
+
     const formData = new FormData(e.currentTarget);
     formData.append("description", description);
 
     const severity = (formData.get("severity") as string) || "MEDIUM";
+    // Read straight from the form so a desynced `category` state can't
+    // silently skip the formal-email step.
+    const categoryValue = (formData.get("category") as string) || category;
 
     if (photoFile) {
       formData.append("photo", photoFile);
@@ -288,7 +381,7 @@ export default function ReportPage() {
 
     if (result.success) {
       // Draft the formal complaint email if the citizen asked for it
-      if (sendEmail && category) {
+      if (sendEmail && categoryValue) {
         const raw = result.complaint?.originalPhotoUrl || "";
         const photoUrl = raw
           ? new URL(raw.startsWith("/") ? raw : `/${raw}`, window.location.origin).toString()
@@ -315,7 +408,7 @@ export default function ReportPage() {
           null;
 
         const emailInput = {
-          category,
+          category: categoryValue,
           address,
           areaLabel,
           gpsLat: location?.lat ?? null,
@@ -348,6 +441,12 @@ export default function ReportPage() {
             subject: draft.subject,
             body: draft.text,
           }),
+          gmail: buildGmailComposeLink({
+            to: draft.to,
+            cc: allCc || null,
+            subject: draft.subject,
+            body: draft.text,
+          }),
         });
 
         // Fire the real send. With no SMTP_* env vars this runs in DUMMY mode:
@@ -360,6 +459,9 @@ export default function ReportPage() {
             voicePath: result.complaint?.voiceNoteUrl ?? null,
           });
           setEmailSent(sent.ok ? { mode: sent.mode, previewUrl: sent.previewUrl } : { error: sent.error });
+          // Real SMTP delivery = a genuine "sent" moment → show the pop-up.
+          // Dummy mode never reaches a real inbox, so it doesn't trigger it.
+          if (sent.ok && sent.mode === "smtp") setShowSentModal(true);
         } catch {
           setEmailSent({ error: "Could not reach the mail server." });
         }
@@ -388,20 +490,52 @@ export default function ReportPage() {
     setEmailDraft(null);
     setEmailSent(null);
     setShowEmailPreview(false);
+    setShowSentModal(false);
+    setManualSendOpened(false);
+    setManualSendAcked(false);
     setPhotoFile(null);
     setPhotoPreview(null);
     setAudioBlob(null);
     setAudioUrl(null);
     setDescription("");
     setCategory("");
-    setSendEmail(false);
-    setCcEmail("");
+    setSendEmail(true);
+    setCcEmail(process.env.NEXT_PUBLIC_TEST_CC_EMAIL || "");
     setJurisdictionKey("");
     setCustomArea({ type: "MUNICIPAL_CORPORATION", name: "", state: "" });
     setRecipientSel({});
     setAreaGuess(null);
     setAreaError("");
   };
+
+  // Screen 3 — shown after the formal email is actually sent (real SMTP
+  // delivery, or the citizen taps "I've sent it" on screen 2).
+  if (success && showSentModal) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: "#eee8da" }}>
+        <div className="dc-surface p-8 w-full max-w-sm text-center space-y-6" style={{ animation: "drishti-riseIn .35s cubic-bezier(.2,.8,.2,1)" }}>
+          <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center" style={{ background: "#dee8c4", border: "1.5px solid rgba(13,83,71,.4)" }}>
+            <CheckCircle2 className="w-10 h-10 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-display font-semibold text-primary mb-2">Email sent</h2>
+            <p className="text-slate-500 text-sm leading-relaxed">
+              {emailSent && "mode" in emailSent && emailSent.mode === "smtp"
+                ? "Delivered to the department and every recipient you selected."
+                : "Your complaint email is on its way to the department and every recipient you selected."}
+              {" "}You can track this report&apos;s status any time from My Reports.
+            </p>
+          </div>
+          <a href="/my-reports" className="dc-pill w-full" style={{ minHeight: 52 }}>
+            View My Reports
+          </a>
+          <button onClick={resetForm} className="dc-pill-ghost w-full" style={{ minHeight: 52 }}>
+            Report another issue
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -417,7 +551,7 @@ export default function ReportPage() {
             </p>
           </div>
 
-          {emailDraft && deptContact && (
+          {emailDraft && (
             <div className="dc-surface-soft p-5 space-y-4 text-left">
               <div className="dc-mono">Formal email ready</div>
               <p className="text-sm text-slate-600 leading-relaxed">
@@ -461,9 +595,48 @@ export default function ReportPage() {
                 </div>
               )}
 
-              <a href={emailDraft.mailto} className="dc-pill w-full" style={{ minHeight: 52 }}>
-                <Mail className="w-4 h-4" /> Open email app to send
+              <a
+                href={emailDraft.gmail}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setManualSendOpened(true)}
+                className="dc-pill w-full"
+                style={{ minHeight: 52 }}
+              >
+                <Mail className="w-4 h-4" /> Open in Gmail to send
               </a>
+              <a
+                href={emailDraft.mailto}
+                onClick={() => setManualSendOpened(true)}
+                className="dc-pill-ghost w-full text-sm"
+                style={{ minHeight: 44 }}
+              >
+                <Mail className="w-4 h-4" /> Or open your device&apos;s email app
+              </a>
+
+              {manualSendOpened && (
+                <div className="rounded-xl p-3 text-sm" style={{ background: manualSendAcked ? "rgba(13,83,71,.08)" : "rgba(181,118,42,.1)", border: `1.5px solid ${manualSendAcked ? "rgba(13,83,71,.3)" : "rgba(181,118,42,.35)"}` }}>
+                  {manualSendAcked ? (
+                    <div className="flex items-center gap-2 font-semibold" style={{ color: "#0d5347" }}>
+                      <Check className="w-4 h-4" /> Acknowledged — thanks. Your complaint is on record either way.
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs leading-relaxed" style={{ color: "#4b473b" }}>
+                        Once you&apos;ve pressed <strong>Send</strong> in the tab/app that just opened, confirm it here.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => { setManualSendAcked(true); setShowSentModal(true); }}
+                        className="dc-pill-ghost w-full mt-2 text-sm"
+                        style={{ minHeight: 40 }}
+                      >
+                        <Check className="w-4 h-4" /> I&apos;ve sent it
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <button type="button" onClick={copyEmailText} className="dc-pill-ghost flex-1 text-sm" style={{ minHeight: 44 }}>
@@ -498,7 +671,8 @@ export default function ReportPage() {
               )}
 
               <p className="text-slate-400" style={{ fontSize: 11 }}>
-                Tip: if the button does nothing, your device has no email app set up — use “Copy email text” and paste it into Gmail or any webmail.
+                Tip: “Open in Gmail” works in any browser — no email app needed, just a signed-in Google account.
+                If that also doesn&apos;t open, use “Copy email text” and paste it into any webmail instead.
               </p>
             </div>
           )}
@@ -512,9 +686,18 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col max-w-md mx-auto relative pb-24" style={{ background: "#eee8da", borderLeft: "1.5px solid rgba(18,21,15,.14)", borderRight: "1.5px solid rgba(18,21,15,.14)" }}>
+    <div
+      className="min-h-[70vh] flex flex-col max-w-md mx-4 my-6 sm:mx-auto sm:my-8 relative"
+      style={{
+        background: "#eee8da",
+        border: "1.5px solid rgba(18,21,15,.14)",
+        borderRadius: 18,
+        overflow: "hidden",
+        boxShadow: "0 24px 60px -30px rgba(18,21,15,.35)",
+      }}
+    >
 
-      <header className="p-6 sticky top-0 z-10 flex items-center justify-between" style={{ background: "#eee8da", borderBottom: "1.5px solid rgba(18,21,15,.16)" }}>
+      <header className="px-6 pt-6 pb-5 flex items-center justify-between" style={{ background: "#eee8da", borderBottom: "1.5px solid rgba(18,21,15,.16)" }}>
         <h1 className="font-display font-semibold text-xl text-primary">Report an issue</h1>
         {location && (
           <div className="dc-badge">
@@ -523,7 +706,7 @@ export default function ReportPage() {
         )}
       </header>
 
-      <main className="flex-grow p-6">
+      <main className="flex-grow px-6 pb-6 pt-8">
         {errorMsg && (
           <div className="mb-6 p-4 rounded-xl text-sm font-medium flex items-center gap-3" style={{ background: "rgba(178,60,46,.1)", border: "1.5px solid rgba(178,60,46,.3)", color: "#b23c2e" }}>
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -547,11 +730,52 @@ export default function ReportPage() {
                 type="text"
                 name="qrCodeId"
                 value={assetId}
-                onChange={(e) => setAssetId(e.target.value)}
+                onChange={(e) => { setAssetId(e.target.value); if (linkedAsset) setLinkedAsset(null); }}
+                onBlur={(e) => {
+                  const t = e.target.value.trim();
+                  if (t && (!linkedAsset || linkedAsset.qrCodeId !== extractAssetCode(t)) && !assetLoading) {
+                    prefillFromAsset(t);
+                  }
+                }}
                 placeholder="Scan QR or enter ID"
                 className="dc-field"
                 style={{ fontFamily: "var(--font-jetbrains), monospace" }}
               />
+
+              {assetLoading && (
+                <p className="dc-mono mt-2 flex items-center gap-1.5" style={{ textTransform: "none", letterSpacing: 0 }}>
+                  <Loader2 className="w-3 h-3 animate-spin" /> Looking up asset…
+                </p>
+              )}
+              {assetMsg && !assetLoading && (
+                <p className="mt-2 text-xs" style={{ color: "#b5762a" }}>{assetMsg}</p>
+              )}
+
+              {linkedAsset && !assetLoading && (
+                <div className="dc-surface-soft p-4 mt-3 flex gap-3">
+                  {linkedAsset.photoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={linkedAsset.photoUrl}
+                      alt=""
+                      className="w-14 h-14 rounded-lg object-cover shrink-0"
+                      style={{ border: "1.5px solid rgba(18,21,15,.18)" }}
+                    />
+                  )}
+                  <div className="min-w-0 flex-grow">
+                    <div className="flex items-center gap-1.5 text-sm font-semibold text-primary">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" /> Auto-filled from this asset
+                    </div>
+                    <p className="text-sm font-semibold text-slate-800 mt-1 truncate">{linkedAsset.categoryLabel}</p>
+                    <p className="dc-mono truncate" style={{ textTransform: "none", letterSpacing: 0 }}>
+                      {linkedAsset.qrCodeId}{linkedAsset.area ? ` · ${linkedAsset.area}` : ""}
+                    </p>
+                    <button type="button" onClick={clearLinkedAsset} className="dc-mono mt-1.5 inline-flex items-center gap-1" style={{ color: "#b5762a" }}>
+                      <X className="w-3 h-3" /> Not this asset — clear
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Manual Location Field */}
@@ -607,6 +831,12 @@ export default function ReportPage() {
                   <option key={c} value={c}>{DEPARTMENT_CONTACTS[c].label}</option>
                 ))}
               </select>
+
+              {linkedAsset && category && (
+                <p className="dc-mono mt-1.5" style={{ textTransform: "none", letterSpacing: 0, color: "#0d5347" }}>
+                  Auto-selected from the scanned asset — change it if the problem is something else.
+                </p>
+              )}
 
               {deptContact && !jurisdiction && (
                 <div className="dc-surface-soft p-4 mt-3 space-y-1.5">
@@ -855,7 +1085,7 @@ export default function ReportPage() {
         </form>
       </main>
 
-      <footer className="fixed bottom-0 w-full max-w-md p-6 z-10" style={{ background: "#eee8da", borderTop: "1.5px solid rgba(18,21,15,.16)" }}>
+      <footer className="w-full p-6" style={{ background: "#eee8da", borderTop: "1.5px solid rgba(18,21,15,.16)" }}>
         <button
           form="report-form"
           type="submit"
@@ -877,12 +1107,30 @@ export default function ReportPage() {
             <div id="reader" className="w-full bg-black"></div>
             <div className="p-4 text-center bg-white">
               <p className="font-bold text-slate-800">Scan DRISHTI QR Code</p>
-              <p className="text-xs text-slate-500">Point camera at the asset's digital twin tag.</p>
+              <p className="text-xs text-slate-500">Point camera at the asset&apos;s digital twin tag.</p>
             </div>
           </div>
         </div>
       )}
 
     </div>
+  );
+}
+
+function ReportPageFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "#eee8da" }}>
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
+// useSearchParams() (to read ?asset=) requires a Suspense boundary so this
+// page can still be statically prerendered.
+export default function ReportPage() {
+  return (
+    <Suspense fallback={<ReportPageFallback />}>
+      <ReportPageInner />
+    </Suspense>
   );
 }

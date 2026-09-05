@@ -105,3 +105,40 @@ export const WARRANTY_OPTIONS: WarrantyOption[] = [
 export function warrantyOptionByValue(value: string | null | undefined): WarrantyOption | null {
   return WARRANTY_OPTIONS.find((o) => o.value === value) ?? null;
 }
+
+/* ---- Asset type → complaint "issue category" (the /report dropdown) ---- */
+
+/**
+ * The report form's category list is: STREETLIGHT, SOLAR_LIGHT, WATER_SUPPLY,
+ * HANDPUMP, ROADS, DRAINAGE, GARBAGE, PUBLIC_TOILET, OPEN_GYM, CCTV, OTHER.
+ * When a citizen scans an asset QR, we pre-select the matching one from the
+ * asset's registered type so they don't have to pick it themselves.
+ */
+const ASSET_TO_ISSUE: Record<string, string> = {
+  STREETLIGHT: "STREETLIGHT",
+  HIGH_MAST_LIGHT: "STREETLIGHT",
+  PARK_LIGHT: "STREETLIGHT",
+  SOLAR_LIGHT: "SOLAR_LIGHT",
+  CCTV: "CCTV",
+  HANDPUMP: "HANDPUMP",
+  BOREWELL: "WATER_SUPPLY",
+  WATER_TANK: "WATER_SUPPLY",
+  WATER_ATM: "WATER_SUPPLY",
+  PUBLIC_TAP: "WATER_SUPPLY",
+  DRAINAGE: "DRAINAGE",
+  MANHOLE: "DRAINAGE",
+  ROAD: "ROADS",
+  FOOTPATH: "ROADS",
+  SPEED_BREAKER: "ROADS",
+  CULVERT: "ROADS",
+  PUBLIC_TOILET: "PUBLIC_TOILET",
+  URINAL: "PUBLIC_TOILET",
+  COMMUNITY_BIN: "GARBAGE",
+  OPEN_GYM: "OPEN_GYM",
+  PLAY_EQUIPMENT: "OPEN_GYM",
+};
+
+export function assetIssueCategory(assetCategory: string | null | undefined): string {
+  if (!assetCategory) return "OTHER";
+  return ASSET_TO_ISSUE[assetCategory.toUpperCase()] ?? "OTHER";
+}

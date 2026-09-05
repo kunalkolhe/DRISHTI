@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { getSession, logoutUser } from "@/app/actions/auth";
 import { setWorkerArea } from "@/app/actions/workerArea";
 import { redirect } from "next/navigation";
@@ -37,13 +38,22 @@ function deriveAreas(addresses: (string | null)[]): string[] {
     .slice(0, 40);
 }
 
+type AssetRecord = Awaited<ReturnType<typeof prisma.asset.findMany>>[number];
+type TaskRecord = Awaited<ReturnType<typeof prisma.complaint.findMany>>[number] & {
+  asset: AssetRecord | null;
+};
+
 const MS_DAY = 86400000;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildMaintenanceList(allAssets: any[], workerArea: string | null, filter: string) {
+type ScheduledAsset = AssetRecord & { lastMaintenanceDate: Date; maintenanceIntervalDays: number };
+
+function buildMaintenanceList(allAssets: AssetRecord[], workerArea: string | null, filter: string) {
   const now = Date.now();
+  const isScheduled = (a: AssetRecord): a is ScheduledAsset =>
+    !!a.lastMaintenanceDate && !!a.maintenanceIntervalDays;
+
   let scheduled = allAssets
-    .filter((a) => a.lastMaintenanceDate && a.maintenanceIntervalDays)
+    .filter(isScheduled)
     .map((a) => {
       const nextDue = new Date(a.lastMaintenanceDate.getTime() + a.maintenanceIntervalDays * MS_DAY);
       return { ...a, _nextDue: nextDue.toISOString(), _dueInDays: Math.round((nextDue.getTime() - now) / MS_DAY) };
@@ -121,12 +131,12 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
       : null;
 
   // 1. Fetch Assets for 'nearby' tab
-  let assets: any[] = [];
+  let assets: AssetRecord[] = [];
   if (activeTab === 'nearby') {
     assets = await prisma.asset.findMany();
   }
 
-  let maintenanceAssets: any[] = [];
+  let maintenanceAssets: ReturnType<typeof buildMaintenanceList>["list"] = [];
   let maintenanceCounts = { overdue: 0, soon: 0, all: 0 };
   const maintFilter = params.filter === 'overdue' || params.filter === 'all' ? params.filter : 'due';
   if (activeTab === 'maintenance') {
@@ -136,10 +146,10 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
   }
 
   // 2. Fetch Tasks for complaint tabs — scoped to the worker's allocated area
-  let tasks: any[] = [];
+  let tasks: TaskRecord[] = [];
   if (complaintTab && workerArea) {
     // "My Tasks" = new + routed complaints in the area the worker can pick up
-    let statusFilter: any = { in: ['OPEN', 'ROUTED'] };
+    let statusFilter: Prisma.ComplaintWhereInput["status"] = { in: ['OPEN', 'ROUTED'] };
 
     if (activeTab === 'reopened') statusFilter = 'REOPENED';
     if (activeTab === 'pending') statusFilter = 'FIXED_PENDING_CONFIRMATION';
@@ -398,25 +408,27 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
         </div>
       </main>
 
-      {/* 3. Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] z-50 flex items-center justify-around px-2 py-3 pb-safe">
-        {navItems.map(item => (
-          <Link 
-            key={item.id} 
-            href={`?tab=${item.id}`} 
-            className={`flex flex-col items-center p-2 rounded-xl transition-colors ${activeTab === item.id ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            <item.icon className={`w-6 h-6 mb-1 ${activeTab === item.id ? 'fill-primary/20' : ''}`} />
-            <span className="text-[10px] font-bold">{item.label}</span>
-          </Link>
-        ))}
-        {/* Mobile Logout */}
-        <form action={logoutUser} className="flex flex-col items-center">
-          <button type="submit" className="flex flex-col items-center p-2 rounded-xl text-slate-400 hover:text-alert transition-colors">
-            <LogOut className="w-6 h-6 mb-1" />
-            <span className="text-[10px] font-bold">Exit</span>
-          </button>
-        </form>
+      {/* 3. Mobile Bottom Navigation — horizontally scrollable tab strip */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] z-50 pb-safe">
+        <div className="flex items-stretch gap-1 overflow-x-auto no-scrollbar px-2 pt-2">
+          {navItems.map(item => (
+            <Link
+              key={item.id}
+              href={`?tab=${item.id}`}
+              className={`shrink-0 min-w-[68px] flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${activeTab === item.id ? 'text-primary bg-primary/10' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'fill-primary/20' : ''}`} />
+              <span className="text-[10px] font-bold leading-none whitespace-nowrap">{item.label}</span>
+            </Link>
+          ))}
+          {/* Mobile Logout */}
+          <form action={logoutUser} className="shrink-0">
+            <button type="submit" className="min-w-[68px] flex flex-col items-center gap-1 p-2 rounded-xl text-slate-400 hover:text-alert transition-colors">
+              <LogOut className="w-5 h-5" />
+              <span className="text-[10px] font-bold leading-none">Exit</span>
+            </button>
+          </form>
+        </div>
       </nav>
 
     </div>

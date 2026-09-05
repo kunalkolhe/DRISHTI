@@ -1,41 +1,27 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { resolveComplaint } from "@/app/actions/complaint";
-import { Loader2, Camera, AlertCircle, CheckCircle2, MapPin, Navigation, QrCode, X, Type } from "lucide-react";
+import { Loader2, Camera, AlertCircle, CheckCircle2, MapPin, Navigation, QrCode, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { extractAssetCode } from "@/lib/qr";
-
-// Haversine formula to calculate distance in meters between two coordinates
-function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371e3; // Radius of the earth in m
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-  return R * c; 
-}
 
 export default function ResolveClient({ complaintId, assetQrCodeId }: { complaintId: number, assetQrCodeId: string | null }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  
+
   // Stages
   const [qrScanned, setQrScanned] = useState(assetQrCodeId === null); // Auto-pass if no asset
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [isLocationVerified, setIsLocationVerified] = useState(false);
-  
-  // Camera State
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [capturedPhoto, setCapturedPhoto] = useState<Blob | null>(null);
+
+  // Repair proof photo — a native file input opens the camera on mobile and
+  // a file picker on desktop, with none of the getUserMedia/<video> ref
+  // timing issues.
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [notes, setNotes] = useState("");
@@ -55,7 +41,7 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
             setErrorMsg(`Incorrect QR Code. Scanned: ${scannedCode}. Expected: ${assetQrCodeId}`);
           }
         },
-        (error) => { /* ignore */ }
+        () => { /* ignore frequent scan errors */ }
       );
 
       return () => {
@@ -69,11 +55,11 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
     setErrorMsg("");
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        () => {
           setIsLocationVerified(true);
           setLoading(false);
         },
-        (err) => {
+        () => {
           setErrorMsg("Could not verify location. Please enable GPS permissions.");
           setLoading(false);
         },
@@ -85,64 +71,34 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
     }
   };
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } 
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraActive(true);
-      }
-    } catch (err) {
-      setErrorMsg("Camera access denied or unavailable.");
-    }
+  const onPhotoPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setErrorMsg("");
   };
 
-  const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const context = canvasRef.current.getContext("2d");
-      if (context) {
-        canvasRef.current.width = videoRef.current.videoWidth;
-        canvasRef.current.height = videoRef.current.videoHeight;
-        context.drawImage(videoRef.current, 0, 0);
-        
-        canvasRef.current.toBlob((blob) => {
-          if (blob) {
-            setCapturedPhoto(blob);
-            setPhotoPreview(URL.createObjectURL(blob));
-            setIsCameraActive(false);
-            
-            // Stop camera stream
-            const stream = videoRef.current?.srcObject as MediaStream;
-            stream?.getTracks().forEach(track => track.stop());
-          }
-        }, "image/webp", 0.8);
-      }
-    }
-  };
-
-  const retakePhoto = () => {
-    setCapturedPhoto(null);
+  const clearPhoto = () => {
+    setPhotoFile(null);
     setPhotoPreview(null);
-    startCamera();
   };
 
   const handleSubmit = async () => {
     if (!qrScanned) return setErrorMsg("You must scan the asset QR code.");
     if (!isLocationVerified) return setErrorMsg("You must verify your GPS location.");
-    if (!capturedPhoto) return setErrorMsg("You must upload a repair photo.");
+    if (!photoFile) return setErrorMsg("You must upload a repair photo.");
 
     setLoading(true);
     setErrorMsg("");
-    
+
     const formData = new FormData();
     formData.append("complaintId", complaintId.toString());
-    formData.append("photo", capturedPhoto, "repair.webp");
+    formData.append("photo", photoFile, photoFile.name || "repair.jpg");
     formData.append("notes", notes);
 
     const result = await resolveComplaint(formData);
-    
+
     if (result.success) {
       setSuccessMsg("Issue marked as FIXED! Waiting for citizen confirmation.");
       setTimeout(() => router.push("/worker"), 2500);
@@ -186,13 +142,13 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
                 Scan QR Code
               </h3>
               <p className="text-sm text-slate-500 mb-4">Confirm you are at the correct asset.</p>
-              
+
               {qrScanned ? (
                 <div className="flex items-center gap-2 text-success font-bold text-sm bg-white py-2 px-4 rounded-lg inline-flex border border-success/20">
                   <QrCode className="w-4 h-4" /> QR Verified
                 </div>
               ) : (
-                <button 
+                <button
                   onClick={() => setShowQRScanner(true)}
                   className="dc-pill dc-pill-dark py-3 px-5 text-sm"
                 >
@@ -201,7 +157,7 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
               )}
             </div>
           )}
-          
+
           {/* Step 1: GPS Verification */}
           <div className={`p-6 rounded-2xl border ${isLocationVerified ? 'border-success bg-success/5' : 'border-gray-200'} ${!qrScanned && 'opacity-50 pointer-events-none'}`}>
             <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
@@ -209,13 +165,13 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
               GPS Geofencing
             </h3>
             <p className="text-sm text-slate-500 mb-4">Confirm your physical presence.</p>
-            
+
             {isLocationVerified ? (
               <div className="flex items-center gap-2 text-success font-bold text-sm bg-white py-2 px-4 rounded-lg inline-flex border border-success/20">
                 <MapPin className="w-4 h-4" /> Location Verified
               </div>
             ) : (
-              <button 
+              <button
                 onClick={verifyLocation}
                 disabled={loading}
                 className="dc-pill dc-pill-dark py-3 px-5 text-sm"
@@ -227,44 +183,42 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
           </div>
 
           {/* Step 2: Repair Photo */}
-          <div className={`p-6 rounded-2xl border ${(isLocationVerified && capturedPhoto) ? 'border-success bg-success/5' : 'border-gray-200'} ${!isLocationVerified && 'opacity-50 pointer-events-none'}`}>
+          <div className={`p-6 rounded-2xl border ${(isLocationVerified && photoFile) ? 'border-success bg-success/5' : 'border-gray-200'} ${!isLocationVerified && 'opacity-50 pointer-events-none'}`}>
             <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs text-white ${(isLocationVerified && capturedPhoto) ? 'bg-success' : 'bg-slate-300'}`}>{assetQrCodeId ? '3' : '2'}</span>
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs text-white ${(isLocationVerified && photoFile) ? 'bg-success' : 'bg-slate-300'}`}>{assetQrCodeId ? '3' : '2'}</span>
               Repair Evidence
             </h3>
             <p className="text-sm text-slate-500 mb-4">Capture a clear photo of the fixed infrastructure.</p>
-            
+
             {photoPreview ? (
               <div className="relative rounded-xl overflow-hidden mb-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photoPreview} alt="Repair" className="w-full h-48 object-cover" />
-                <button onClick={retakePhoto} className="absolute bottom-4 right-4 bg-white/90 text-slate-800 px-4 py-2 rounded-lg font-bold text-sm backdrop-blur-md">
-                  Retake Photo
-                </button>
-              </div>
-            ) : isCameraActive ? (
-              <div className="relative rounded-xl overflow-hidden mb-4 bg-black">
-                <video ref={videoRef} autoPlay playsInline className="w-full h-48 object-cover" />
-                <button onClick={capturePhoto} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white text-slate-800 px-6 py-2 rounded-full font-bold text-sm shadow-lg">
-                  Capture
-                </button>
+                <div className="absolute bottom-4 right-4 flex gap-2">
+                  <label className="bg-white/90 text-slate-800 px-4 py-2 rounded-lg font-bold text-sm backdrop-blur-md cursor-pointer">
+                    Retake Photo
+                    <input type="file" accept="image/*" capture="environment" onChange={onPhotoPick} className="sr-only" />
+                  </label>
+                  <button onClick={clearPhoto} className="bg-white/90 text-alert px-3 py-2 rounded-lg font-bold text-sm backdrop-blur-md">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ) : (
-              <button 
-                onClick={startCamera}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-12 px-5 rounded-xl transition-all flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed border-gray-300"
+              <label
+                className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-12 px-5 rounded-xl transition-all flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed border-gray-300 cursor-pointer"
               >
                 <Camera className="w-8 h-8 text-slate-400" />
-                <span>Open Camera</span>
-              </button>
+                <span>Take / choose a photo</span>
+                <input type="file" accept="image/*" capture="environment" onChange={onPhotoPick} className="sr-only" />
+              </label>
             )}
-            
-            <canvas ref={canvasRef} className="hidden" />
           </div>
 
           {/* Notes */}
-          <div className={`p-6 rounded-2xl border border-gray-200 ${!capturedPhoto && 'opacity-50 pointer-events-none'}`}>
+          <div className={`p-6 rounded-2xl border border-gray-200 ${!photoFile && 'opacity-50 pointer-events-none'}`}>
              <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs text-white bg-slate-800`}>{assetQrCodeId ? '4' : '3'}</span>
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white bg-slate-800">{assetQrCodeId ? '4' : '3'}</span>
               Worker Notes <span className="text-slate-400 font-normal ml-2 text-xs">(Optional)</span>
             </h3>
             <textarea
@@ -279,7 +233,7 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={!qrScanned || !isLocationVerified || !capturedPhoto || loading}
+            disabled={!qrScanned || !isLocationVerified || !photoFile || loading}
             className="dc-pill w-full"
             style={{ minHeight: 56, fontSize: 17 }}
           >

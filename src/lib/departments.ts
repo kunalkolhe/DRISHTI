@@ -209,7 +209,13 @@ export function draftComplaintEmail(input: ComplaintEmailInput): DraftedEmail {
 
   const primary: EmailRecipient =
     input.primaryRecipient ?? { role: contact.officerName, email: contact.email };
-  const cc = (input.ccRecipients ?? []).filter((r) => r.email && r.email !== primary.email);
+  const seenCc = new Set<string>();
+  const cc = (input.ccRecipients ?? []).filter((r) => {
+    const email = r.email?.toLowerCase().trim();
+    if (!email || email === primary.email?.toLowerCase().trim() || seenCc.has(email)) return false;
+    seenCc.add(email);
+    return true;
+  });
 
   const when = new Date(input.reportedAt ?? Date.now()).toLocaleString("en-IN", {
     dateStyle: "long",
@@ -353,4 +359,27 @@ export function buildMailtoLink(opts: {
   // Normalise newlines to CRLF — Outlook and Apple Mail want it.
   parts.push(`body=${encodeURIComponent(opts.body.replace(/\r?\n/g, "\r\n"))}`);
   return `mailto:${opts.to}?${parts.join("&")}`;
+}
+
+/**
+ * Builds a Gmail web-compose link — opens gmail.com's compose window in a
+ * browser tab with everything pre-filled. Unlike `mailto:`, this needs no
+ * OS-level mail app registered, so it's the reliable fallback on machines
+ * (or dev/test setups) where clicking a `mailto:` link does nothing.
+ */
+export function buildGmailComposeLink(opts: {
+  to: string;
+  cc?: string | null;
+  subject: string;
+  body: string;
+}): string {
+  const params = new URLSearchParams({
+    view: "cm",
+    fs: "1",
+    to: opts.to,
+    su: opts.subject,
+    body: opts.body,
+  });
+  if (opts.cc && opts.cc.trim()) params.set("cc", opts.cc.trim());
+  return `https://mail.google.com/mail/?${params.toString()}`;
 }

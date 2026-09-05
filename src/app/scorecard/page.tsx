@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import { Activity, CheckCircle2, TrendingUp, Users, ArrowLeft } from "lucide-react";
+import { Activity, CheckCircle2, TrendingUp, Users } from "lucide-react";
 
 // This is a Server Component, meaning this code runs on the backend
 // and fetches fresh data every time the page loads!

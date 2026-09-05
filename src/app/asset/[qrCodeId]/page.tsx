@@ -135,7 +135,7 @@ export default async function PublicAssetPage({
   }
   events.sort((a, b) => b.date.getTime() - a.date.getTime());
 
-  const EV_STYLE: Record<Ev["kind"], { color: string; Icon: React.ComponentType<{ className?: string }> }> = {
+  const EV_STYLE: Record<Ev["kind"], { color: string; Icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }> = {
     install: { color: "#0d5347", Icon: PackagePlus },
     service: { color: "#0d5347", Icon: Wrench },
     maintenance: { color: "#b5762a", Icon: Wrench },

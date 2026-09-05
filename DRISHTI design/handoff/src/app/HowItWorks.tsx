@@ -22,7 +22,7 @@ const STEPS: Step[] = [
     icon: QrCode,
     reveal: {
       head: "The tag is the address.",
-      body: "You don't type a street name or pick from a list. The tag already knows which pole it is, so nothing gets filed against “somewhere on MG Road”.",
+      body: "You don't type a street name or pick from a list. The tag already knows which pole it is, so nothing gets filed against \u201csomewhere on MG Road\u201d.",
       meta: "NO ADDRESS TYPING",
     },
   },
@@ -90,7 +90,7 @@ export default function HowItWorks({
   };
 
   return (
-    <section id="how-it-works" className="relative overflow-hidden bg-[#eee8da] px-5 pb-16 pt-16 text-[#0d5347] sm:px-8 sm:pb-20 sm:pt-20 lg:px-10 lg:pb-24 lg:pt-22">
+    <section className="relative overflow-hidden bg-[#eee8da] px-10 pb-24 pt-22 text-[#0d5347]">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.045]"
         style={{
@@ -106,18 +106,18 @@ export default function HowItWorks({
           <span className="font-mono text-xs font-medium leading-none tracking-[0.24em]">
             HOW IT WORKS
           </span>
-          <h2 className="m-0 text-[clamp(32px,4.6vw,72px)] font-bold leading-[1.1] tracking-[-0.02em]">
+          <h2 className="m-0 text-[clamp(40px,4.6vw,72px)] font-bold leading-[1.08] tracking-[-0.02em]">
             <span className="block">From a broken light to a</span>
             <span className="block text-transparent opacity-60 [-webkit-text-stroke:1.6px_#0d5347]">
               proven fix.
             </span>
           </h2>
-          <p className="m-0 max-w-[540px] text-lg leading-relaxed text-[#0d5347]/80 sm:text-xl [text-wrap:pretty]">
+          <p className="m-0 max-w-[540px] text-xl leading-relaxed text-[#0d5347]/80 [text-wrap:pretty]">
             Four steps. The first two take you seconds. The last one puts the
             decision in your hands.
           </p>
           <p className="m-0 flex items-center gap-2.5 font-mono text-[11.5px] leading-none tracking-[0.16em] text-[#0d5347]/60">
-            <span className="dr-pulse h-2 w-2 rounded-full bg-[#b5762a]" />
+            <span className="dr-pulse h-2 w-2 rounded-full bg-[#c9a84c]" />
             HOVER OR TAP A STEP TO SEE WHAT IT MEANS
           </p>
         </div>
@@ -171,7 +171,7 @@ export default function HowItWorks({
 
                   {/* accent rail */}
                   <div
-                    className="absolute inset-x-0 bottom-0 h-[5px] origin-left bg-[#b5762a] transition-transform duration-300"
+                    className="absolute inset-x-0 bottom-0 h-[5px] origin-left bg-[#c9a84c] transition-transform duration-300"
                     style={{ transform: `scaleX(${on ? 1 : 0})` }}
                   />
 
@@ -190,7 +190,7 @@ export default function HowItWorks({
                     <p className="m-0 text-[13.5px] leading-normal text-[#f2ecdd]/85 [text-wrap:pretty]">
                       {s.reveal.body}
                     </p>
-                    <span className="font-mono text-[10px] leading-tight tracking-[0.14em] text-[#b5762a]">
+                    <span className="font-mono text-[10px] leading-tight tracking-[0.14em] text-[#c9a84c]">
                       {s.reveal.meta}
                     </span>
                   </div>
@@ -200,12 +200,12 @@ export default function HowItWorks({
           </div>
         </div>
 
-        <div className="flex flex-col items-stretch gap-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
+        <div className="flex flex-wrap items-center gap-8">
           <Link
             href="/report"
-            className="inline-flex items-center justify-center gap-4 rounded-2xl bg-[#0d5347] px-6 py-4 text-[#f2ecdd] no-underline transition-transform hover:-translate-y-0.5 sm:gap-6 sm:px-8 sm:py-5"
+            className="inline-flex items-center gap-6 rounded-2xl bg-[#0d5347] px-8 py-5 text-[#f2ecdd] no-underline transition-transform hover:-translate-y-0.5"
           >
-            <span className="text-[19px] font-semibold leading-none sm:text-[22px]">
+            <span className="text-[22px] font-semibold leading-none">
               Report a problem
             </span>
             <span className="font-mono text-xs leading-none tracking-[0.16em] opacity-70">
@@ -213,8 +213,8 @@ export default function HowItWorks({
             </span>
           </Link>
           <Link
-            href="/scorecard"
-            className="inline-flex items-center justify-center gap-3 border-b-2 border-[#0d5347]/35 pb-2 text-[18px] font-semibold leading-tight no-underline sm:text-[21px]"
+            href="/ward"
+            className="inline-flex items-center gap-3 border-b-2 border-[#0d5347]/35 pb-2 text-[21px] font-semibold leading-none no-underline"
           >
             See how your ward is doing <span className="text-[19px]">→</span>
           </Link>
