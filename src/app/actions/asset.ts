@@ -2,7 +2,14 @@
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "./auth";
-import { maintenanceDaysFor, departmentFor, warrantyOptionByValue, prettyCategory } from "@/lib/assetTypes";
+import {
+  maintenanceDaysFor,
+  departmentFor,
+  warrantyOptionByValue,
+  prettyCategory,
+  assetIssueCategory,
+} from "@/lib/assetTypes";
+import { extractAssetCode } from "@/lib/qr";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -13,7 +20,6 @@ async function saveFileLocally(file: File): Promise<string> {
   const buffer = Buffer.from(bytes);
   
   const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-  const ext = file.name.split('.').pop();
   const filename = `${uniquePrefix}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`;
   
   const uploadDir = path.join(process.cwd(), 'public', 'uploads');
@@ -23,6 +29,65 @@ async function saveFileLocally(file: File): Promise<string> {
   await fs.writeFile(filepath, buffer);
   
   return `/uploads/${filename}`;
+}
+
+export type AssetLookup = {
+  qrCodeId: string;
+  category: string;
+  categoryLabel: string;
+  issueCategory: string;
+  department: string;
+  area: string | null;
+  gpsLat: number;
+  gpsLon: number;
+  photoUrl: string | null;
+};
+
+/**
+ * Public lookup used by the citizen "Report an issue" form. When a QR is
+ * scanned (or arrives as ?asset=...), we return the asset's registered
+ * details so the form can auto-fill — the citizen shouldn't have to re-enter
+ * what the field worker already recorded when tagging the asset.
+ */
+export async function lookupAsset(
+  rawCode: string,
+): Promise<{ ok: true; asset: AssetLookup } | { ok: false; error: string }> {
+  const code = extractAssetCode((rawCode || "").trim());
+  if (!code) return { ok: false, error: "No asset code given." };
+
+  try {
+    const asset = await prisma.asset.findUnique({
+      where: { qrCodeId: code },
+      select: {
+        qrCodeId: true,
+        category: true,
+        department: true,
+        area: true,
+        gpsLat: true,
+        gpsLon: true,
+        photoUrl: true,
+      },
+    });
+    if (!asset) return { ok: false, error: `No asset is registered against ${code}.` };
+
+    return {
+      ok: true,
+      asset: {
+        qrCodeId: asset.qrCodeId,
+        category: asset.category,
+        categoryLabel: prettyCategory(asset.category),
+        issueCategory: assetIssueCategory(asset.category),
+        department: asset.department,
+        area: asset.area,
+        gpsLat: asset.gpsLat,
+        gpsLon: asset.gpsLon,
+        photoUrl: asset.photoUrl,
+      },
+    };
+  } catch (error) {
+    console.error("lookupAsset error:", error);
+    return { ok: false, error: "Could not look up that asset." };
+  }
 }
 
 export async function createAsset(formData: FormData) {
@@ -134,7 +199,7 @@ export async function logMaintenance(formData: FormData) {
     ]);
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Maintenance log error:", error);
     return { success: false, error: "Failed to log maintenance." };
   }

@@ -36,12 +36,23 @@
 }
 
 @layer base {
+  html {
+    /* never let a stray wide element sideways-scroll the whole page on phones */
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-ink);
     font-family: var(--font-bricolage), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+    /* respect notches / rounded corners on modern phones */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -52,6 +63,24 @@
 
   input, select, textarea, button {
     font-family: inherit;
+  }
+
+  /* media never overflows its container on small screens */
+  img, video, canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* remove the grey flash on tap, keep a subtle one */
+  a, button, [role="button"] {
+    -webkit-tap-highlight-color: rgba(13, 83, 71, 0.12);
+  }
+
+  /* comfortable minimum hit area for touch */
+  @media (pointer: coarse) {
+    a, button, [role="button"], input[type="checkbox"], input[type="radio"], select {
+      touch-action: manipulation;
+    }
   }
 }
 
@@ -162,6 +191,20 @@
     box-shadow: 0 0 0 3px rgba(13, 83, 71, 0.15);
   }
 
+  /* Safe-area padding for fixed bottom bars on phones with a home indicator */
+  .pb-safe {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  /* Hide scrollbars on horizontally-scrolling strips (mobile tab bars) */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Mono chip / badge */
   .dc-badge {
     display: inline-flex;
@@ -201,6 +244,31 @@
 .drishti-balance { text-wrap: balance; }
 .drishti-pretty { text-wrap: pretty; }
 
+/* ---- Phone-mockup hero + interactive how-it-works (Hero.tsx / HowItWorks.tsx) ---- */
+@keyframes dr-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+@keyframes dr-scan {
+  0%   { transform: translateY(-14px); }
+  100% { transform: translateY(14px); }
+}
+@keyframes dr-tick {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes dr-notif {
+  0%   { opacity: 0; transform: translateY(-120%) scale(0.94); }
+  8%   { opacity: 1; transform: translateY(0) scale(1); }
+  42%  { opacity: 1; transform: translateY(0) scale(1); }
+  52%  { opacity: 0; transform: translateY(-120%) scale(0.94); }
+  100% { opacity: 0; transform: translateY(-120%) scale(0.94); }
+}
+.dr-pulse { animation: dr-pulse 1.6s ease-in-out infinite; }
+.dr-scan  { animation: dr-scan 1.6s ease-in-out infinite alternate; }
+.dr-tick  { animation: dr-tick 34s linear infinite; }
+.dr-notif { animation: dr-notif 7s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+
 /* ---- Print: isolate the worker ID card ---- */
 @media print {
   body * { visibility: hidden !important; }
@@ -218,4 +286,7 @@
   .drishti-hero *,
   .drishti-hero *::before,
   .drishti-hero *::after { animation: none !important; }
+
+  .dr-pulse, .dr-scan, .dr-tick, .dr-notif { animation: none; }
+  .dr-notif { opacity: 1; transform: none; }
 }

@@ -12,7 +12,7 @@ export default function SiteFooter() {
         background: "#12150f",
         color: "#d8d4c6",
         fontFamily: DISPLAY,
-        padding: "56px 52px 40px",
+        padding: "48px clamp(20px, 6vw, 52px) 36px",
         borderTop: "1.5px solid rgba(18,21,15,.5)",
       }}
     >

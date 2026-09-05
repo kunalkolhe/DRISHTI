@@ -4,13 +4,14 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import type { Role } from "@prisma/client";
 
 export async function registerUser(formData: FormData) {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const mobileNumber = formData.get("mobileNumber") as string;
   const password = formData.get("password") as string;
-  const role = formData.get("role") as any || "CITIZEN";
+  const role = (formData.get("role") as Role) || "CITIZEN";
 
   if (!name || !mobileNumber || !password) {
     return { success: false, error: "Missing required fields." };
@@ -117,7 +118,7 @@ export async function getSession() {
       select: { id: true, name: true, email: true, role: true }
     });
     return user;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

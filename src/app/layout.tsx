@@ -1,8 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Manrope, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import NavbarGate from "@/components/NavbarGate";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -29,6 +28,13 @@ export const metadata: Metadata = {
   description: "Digital Reporting and Infrastructure Surveillance with Health Tracking Intelligence",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#eee8da",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,9 +45,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${manrope.variable} ${bricolage.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <NavbarGate>
-          <Navbar />
-        </NavbarGate>
+        <Navbar />
         {children}
       </body>
     </html>

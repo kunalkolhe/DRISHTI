@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { registerUser, loginUser } from "@/app/actions/auth";
 import { Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 export default function AuthPage() {
+  const router = useRouter();
   const [isLogin, setIsLogin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -16,31 +18,29 @@ export default function AuthPage() {
     setErrorMsg("");
     setSuccessMsg("");
 
-    let result;
     if (isLogin) {
-      result = await loginUser(formData);
-    } else {
-      result = await registerUser(formData);
-    }
-
-    if (result.success) {
-      if (isLogin) {
+      const result = await loginUser(formData);
+      if (result.success) {
         setSuccessMsg("Logged in. Redirecting…");
         setTimeout(() => {
-          if (result.user?.role === "ADMIN") {
-            window.location.href = "/admin";
-          } else if (result.user?.role === "FIELD_WORKER") {
-            window.location.href = "/worker";
-          } else {
-            window.location.href = "/";
-          }
+          const dest =
+            result.user?.role === "ADMIN" ? "/admin" :
+            result.user?.role === "FIELD_WORKER" ? "/worker" :
+            "/";
+          router.push(dest);
+          router.refresh();
         }, 500);
       } else {
-        setSuccessMsg("Account created. You can sign in now.");
-        setIsLogin(true);
+        setErrorMsg(result.error || "Authentication failed.");
       }
     } else {
-      setErrorMsg(result.error || "Authentication failed.");
+      const result = await registerUser(formData);
+      if (result.success) {
+        setSuccessMsg("Account created. You can sign in now.");
+        setIsLogin(true);
+      } else {
+        setErrorMsg(result.error || "Authentication failed.");
+      }
     }
 
     setLoading(false);
