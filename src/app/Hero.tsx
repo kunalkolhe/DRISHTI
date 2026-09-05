@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, QrCode } from "lucide-react";
+import { Check, QrCode, Home, Camera, Bell, User } from "lucide-react";
 
 const PROMISES = [
   { label: "Photo from the spot", meta: "GEO-STAMPED ON CAPTURE" },
@@ -185,6 +185,29 @@ export default function Hero() {
                   <p className="m-0 text-center text-[13.5px] leading-snug text-[#0d5347]/70">
                     Your answer closes this complaint. Nobody else can.
                   </p>
+
+                  {/* app bottom nav */}
+                  <div className="-mx-5 mt-1 flex items-end justify-around border-t border-[#0d5347]/15 px-6 pt-3">
+                    {[
+                      { Icon: Home, label: "Home" },
+                      { Icon: Camera, label: "Report", primary: true },
+                      { Icon: Bell, label: "Updates" },
+                      { Icon: User, label: "Me" },
+                    ].map(({ Icon, label, primary }) => (
+                      <span key={label} className="flex flex-col items-center gap-1">
+                        {primary ? (
+                          <span className="-mt-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#0d5347] text-[#f7f3e8] shadow-[0_6px_14px_rgba(13,83,71,0.35)]">
+                            <Icon size={19} strokeWidth={2} />
+                          </span>
+                        ) : (
+                          <Icon size={19} strokeWidth={1.9} className="text-[#0d5347]/55" />
+                        )}
+                        <span className={`font-mono text-[9px] leading-none tracking-[0.1em] ${primary ? "text-[#0d5347]" : "text-[#0d5347]/45"}`}>
+                          {label}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
                 {/* sheen */}
