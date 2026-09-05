@@ -102,3 +102,23 @@ export async function forwardGeocode(text: string): Promise<AreaGuess | null> {
   if (!Array.isArray(arr) || !arr.length || !arr[0].address) return null;
   return toGuess(arr[0].address, "text");
 }
+
+/** Geocode a free-text address / landmark to a precise point. */
+export async function geocodeAddress(
+  text: string,
+): Promise<{ lat: number; lon: number; label: string; area: AreaGuess | null } | null> {
+  const arr = (await call(
+    `/search?format=jsonv2&addressdetails=1&limit=1&countrycodes=in&q=${encodeURIComponent(text)}`,
+  )) as Array<{ lat?: string; lon?: string; display_name?: string; address?: NominatimAddress }>;
+  const hit = Array.isArray(arr) ? arr[0] : undefined;
+  if (!hit?.lat || !hit?.lon) return null;
+  const lat = parseFloat(hit.lat);
+  const lon = parseFloat(hit.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return {
+    lat,
+    lon,
+    label: hit.display_name || text,
+    area: hit.address ? toGuess(hit.address, "text") : null,
+  };
+}

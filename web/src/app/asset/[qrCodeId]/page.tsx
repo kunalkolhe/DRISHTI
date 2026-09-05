@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { extractAssetCode } from "@/lib/qr";
+import { prettyCategory } from "@/lib/assetTypes";
 import {
   Lightbulb,
   Droplets,
@@ -15,15 +16,31 @@ import {
   PackagePlus,
   CircleCheck,
   IndianRupee,
+  TrafficCone,
+  Trash2,
 } from "lucide-react";
 
-const CATEGORY_META: Record<string, { label: string; Icon: React.ComponentType<{ className?: string }> }> = {
-  STREETLIGHT: { label: "Streetlight", Icon: Lightbulb },
-  HANDPUMP: { label: "Handpump", Icon: Droplets },
-  OPEN_GYM: { label: "Open-gym unit", Icon: Dumbbell },
-  SOLAR_LIGHT: { label: "Solar light", Icon: Sun },
-  CCTV: { label: "CCTV camera", Icon: Cctv },
-  PUBLIC_TOILET: { label: "Public toilet", Icon: DoorClosed },
+// icon by category value — anything not listed uses the fallback
+const CATEGORY_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  STREETLIGHT: Lightbulb,
+  SOLAR_LIGHT: Sun,
+  HIGH_MAST_LIGHT: Lightbulb,
+  PARK_LIGHT: Lightbulb,
+  TRAFFIC_SIGNAL: TrafficCone,
+  SPEED_BREAKER: TrafficCone,
+  CCTV: Cctv,
+  HANDPUMP: Droplets,
+  BOREWELL: Droplets,
+  WATER_TANK: Droplets,
+  WATER_ATM: Droplets,
+  PUBLIC_TAP: Droplets,
+  DRAINAGE: Droplets,
+  MANHOLE: Droplets,
+  OPEN_GYM: Dumbbell,
+  PLAY_EQUIPMENT: Dumbbell,
+  PUBLIC_TOILET: DoorClosed,
+  URINAL: DoorClosed,
+  COMMUNITY_BIN: Trash2,
 };
 
 const OPEN_STATUSES = new Set(["OPEN", "ROUTED", "REOPENED", "FIXED_PENDING_CONFIRMATION"]);
@@ -75,7 +92,7 @@ export default async function PublicAssetPage({
     );
   }
 
-  const meta = CATEGORY_META[asset.category] ?? { label: asset.category, Icon: PackagePlus };
+  const meta = { label: prettyCategory(asset.category), Icon: CATEGORY_ICON[asset.category] ?? PackagePlus };
   const { Icon } = meta;
 
   const openComplaints = asset.complaints.filter((c) => OPEN_STATUSES.has(c.status));
@@ -129,7 +146,13 @@ export default async function PublicAssetPage({
   const facts: Array<[string, string]> = [
     ["Installed", fmtDate(asset.installDate)],
     ["Department", asset.department],
-    ["Warranty / AMC", asset.warrantyStatus || "None on record"],
+    ...(asset.area ? [["Area", asset.area] as [string, string]] : []),
+    [
+      "Warranty / AMC",
+      asset.warrantyExpiry
+        ? `${isPast(asset.warrantyExpiry) ? "Expired" : "Valid till"} ${fmtDate(asset.warrantyExpiry)}`
+        : asset.warrantyStatus || "None on record",
+    ],
     ["Maintenance cycle", asset.maintenanceIntervalDays ? `Every ${asset.maintenanceIntervalDays} days` : "—"],
     ["Last serviced", fmtDate(asset.lastMaintenanceDate)],
     ["Next service due", nextDue ? `${fmtDate(nextDue)}${overdue ? " (overdue)" : ""}` : "—"],

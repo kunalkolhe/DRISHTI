@@ -156,10 +156,62 @@ export async function resolveComplaint(formData: FormData) {
     revalidatePath("/worker");
     revalidatePath("/scorecard");
     revalidatePath("/admin");
-    
+
     return { success: true };
   } catch (err) {
     console.error("Error resolving complaint:", err);
     return { success: false, error: "Server error resolving complaint." };
   }
+}
+
+/** Shared guard: the complaint must belong to the signed-in citizen and be awaiting their word. */
+async function loadPendingComplaint(complaintId: number) {
+  const session = await getSession();
+  if (!session) return { error: "Please log in to respond." as const };
+  const complaint = await prisma.complaint.findUnique({ where: { id: complaintId } });
+  if (!complaint || complaint.citizenId !== session.id) return { error: "This is not your complaint." as const };
+  if (complaint.status !== "FIXED_PENDING_CONFIRMATION") {
+    return { error: "This complaint is not awaiting your confirmation." as const };
+  }
+  return { complaint };
+}
+
+/** Citizen confirms the repair is good → complaint is CLOSED. */
+export async function confirmRepair(complaintId: number) {
+  const res = await loadPendingComplaint(complaintId);
+  if ("error" in res) return { success: false, error: res.error };
+
+  await prisma.complaint.update({
+    where: { id: complaintId },
+    data: { status: "CLOSED", closedAt: new Date() },
+  });
+
+  revalidatePath("/my-reports");
+  revalidatePath("/worker");
+  revalidatePath("/scorecard");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+/** Citizen rejects the repair → complaint is REOPENED and goes back to the worker as priority. */
+export async function rejectRepair(complaintId: number, reason: string) {
+  const res = await loadPendingComplaint(complaintId);
+  if ("error" in res) return { success: false, error: res.error };
+
+  await prisma.complaint.update({
+    where: { id: complaintId },
+    data: {
+      status: "REOPENED",
+      reopenReason: (reason || "").trim() || null,
+      reopenCount: { increment: 1 },
+      resolvedAt: null,
+      resolvedByWorkerId: null,
+    },
+  });
+
+  revalidatePath("/my-reports");
+  revalidatePath("/worker");
+  revalidatePath("/scorecard");
+  revalidatePath("/admin");
+  return { success: true };
 }

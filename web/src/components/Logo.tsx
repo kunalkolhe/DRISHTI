@@ -1,48 +1,48 @@
 import Link from "next/link";
 
 /**
- * DRISHTI mark — a civic "eye" set in a hard-edged tile.
- * The pupil is a rounded square: a nod to the QR asset tag every
- * streetlight and handpump carries. Matches the site's offset-shadow,
- * 1.5px-ink-border visual language.
+ * DRISHTI mark — the "civic eye": two interlocking crescents (civic green +
+ * ochre) that swirl into an almond eye around a green iris. `shadow` is kept
+ * for call-site compatibility and no longer draws anything.
  */
 export function LogoMark({
   size = 40,
-  shadow = true,
 }: {
   size?: number;
+  /** @deprecated no longer used */
   shadow?: boolean;
 }) {
   return (
     <svg
       width={size}
-      height={size}
-      viewBox="0 0 44 44"
+      height={Math.round(size * 0.88)}
+      viewBox="0 0 100 88"
       fill="none"
       role="img"
       aria-label="DRISHTI"
     >
-      {shadow && <rect x="6" y="8" width="33" height="33" rx="10.5" fill="#0a3f36" />}
-      <rect
-        x="3.5"
-        y="3.5"
-        width="33"
-        height="33"
-        rx="10.5"
-        fill="#0d5347"
-        stroke="#12150f"
-        strokeWidth="1.6"
-      />
-      {/* eye */}
+      {/* green blade — sweeps over the top and curls down the left */}
       <path
-        d="M8.5 20C12.5 12.8 27.5 12.8 31.5 20C27.5 27.2 12.5 27.2 8.5 20Z"
-        stroke="#e9edd3"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
+        d="M5 44 C24 6 76 6 95 44 C80 22 58 28 50 44 C42 60 20 66 5 44 Z"
+        fill="#0d5347"
       />
-      {/* pupil = asset tag */}
-      <rect x="16.4" y="16.4" width="7.2" height="7.2" rx="2.1" fill="#e9edd3" />
-      <rect x="19.1" y="19.1" width="1.8" height="1.8" rx="0.5" fill="#0d5347" />
+      {/* ochre blade — sweeps under the bottom and curls up the right */}
+      <path
+        d="M5 44 C20 66 42 60 50 44 C58 28 80 22 95 44 C76 82 24 82 5 44 Z"
+        fill="#b5762a"
+      />
+      {/* cream gap along the swirl */}
+      <path
+        d="M5 44 C20 66 42 60 50 44 C58 28 80 22 95 44"
+        fill="none"
+        stroke="#fdfaf1"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+      {/* iris */}
+      <circle cx="50" cy="43" r="13" fill="#fdfaf1" />
+      <circle cx="50" cy="43" r="11" fill="#0d5347" />
+      <circle cx="55" cy="38" r="4.4" fill="#fdfaf1" />
     </svg>
   );
 }

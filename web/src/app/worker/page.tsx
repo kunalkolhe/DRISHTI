@@ -1,14 +1,71 @@
 import { prisma } from "@/lib/prisma";
 import { getSession, logoutUser } from "@/app/actions/auth";
+import { setWorkerArea } from "@/app/actions/workerArea";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import Link from "next/link";
-import { CheckCircle2, Clock, MapPin, Navigation, FileCheck, LogOut, Home, CheckSquare, AlertTriangle, PlusCircle, Wrench, CreditCard } from "lucide-react";
+import { CheckCircle2, Clock, MapPin, Navigation, FileCheck, LogOut, Home, CheckSquare, AlertTriangle, PlusCircle, Wrench, CreditCard, MapPinned } from "lucide-react";
 import Image from "next/image";
 import NearbyAssets from "./NearbyAssets";
 import AddAsset from "./AddAsset";
 import MaintenanceDue from "./MaintenanceDue";
 import WorkerIdCard from "@/components/WorkerIdCard";
+import { prettyCategory } from "@/lib/assetTypes";
+
+const AREA_STOPWORDS = new Set([
+  "near", "opposite", "opp", "main", "gate", "road", "street", "cross", "behind",
+  "next", "the", "and", "bus", "stand", "station", "chowk", "circle", "junction",
+  "gps", "location", "attached", "front", "side", "corner", "lane", "colony",
+]);
+
+/** Pull area-like keywords out of the free-text complaint addresses. */
+function deriveAreas(addresses: (string | null)[]): string[] {
+  const set = new Set<string>();
+  for (const raw of addresses) {
+    if (!raw) continue;
+    const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    if (parts.length) set.add(parts[parts.length - 1]);
+    for (const w of raw.split(/[\s,()]+/)) {
+      const t = w.replace(/[^A-Za-z]/g, "");
+      if (t.length > 3 && !AREA_STOPWORDS.has(t.toLowerCase())) set.add(t);
+    }
+  }
+  return [...set]
+    .filter((s) => s && !/^\d/.test(s))
+    .map((s) => s.replace(/\s+/g, " ").trim())
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, 40);
+}
+
+const MS_DAY = 86400000;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildMaintenanceList(allAssets: any[], workerArea: string | null, filter: string) {
+  const now = Date.now();
+  let scheduled = allAssets
+    .filter((a) => a.lastMaintenanceDate && a.maintenanceIntervalDays)
+    .map((a) => {
+      const nextDue = new Date(a.lastMaintenanceDate.getTime() + a.maintenanceIntervalDays * MS_DAY);
+      return { ...a, _nextDue: nextDue.toISOString(), _dueInDays: Math.round((nextDue.getTime() - now) / MS_DAY) };
+    });
+
+  if (workerArea) {
+    const wa = workerArea.toLowerCase();
+    scheduled = scheduled.filter((a) => !a.area || a.area.toLowerCase().includes(wa));
+  }
+
+  const counts = {
+    overdue: scheduled.filter((a) => a._dueInDays < 0).length,
+    soon: scheduled.filter((a) => a._dueInDays >= 0 && a._dueInDays <= 7).length,
+    all: scheduled.length,
+  };
+
+  const list = scheduled
+    .filter((a) => (filter === "all" ? true : filter === "overdue" ? a._dueInDays < 0 : a._dueInDays <= 7))
+    .sort((a, b) => a._dueInDays - b._dueInDays);
+
+  return { list, counts };
+}
 
 function getSLA(createdAt: Date, severity: string | null) {
   const hours = severity === 'HIGH' ? 24 : severity === 'MEDIUM' ? 72 : 168; 
@@ -20,7 +77,7 @@ function getSLA(createdAt: Date, severity: string | null) {
   return { text: `${Math.round(diffHours)}h remaining`, urgent: diffHours < 12 };
 }
 
-export default async function WorkerDashboard({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function WorkerDashboard({ searchParams }: { searchParams: Promise<{ tab?: string; filter?: string }> }) {
   const session = await getSession();
   
   if (!session || session.role !== 'FIELD_WORKER') {
@@ -34,12 +91,32 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
   const host = hdrs.get("host");
   const origin = host ? `${hdrs.get("x-forwarded-proto") || "http"}://${host}` : "";
 
+  // Worker's allocated area (self-selected, remembered in a cookie)
+  const workerArea = (await cookies()).get("worker_area")?.value?.trim() || null;
+  const complaintTab = ['assigned', 'reopened', 'pending', 'completed'].includes(activeTab);
+  const needsArea = complaintTab && !workerArea;
+
+  // Options to help the worker pick their area
+  const areaSuggestions =
+    complaintTab
+      ? deriveAreas(
+          (
+            await prisma.complaint.findMany({
+              where: { address: { not: null } },
+              select: { address: true },
+              distinct: ["address"],
+              take: 300,
+            })
+          ).map((r) => r.address),
+        )
+      : [];
+
   // Full worker record for the ID card
   const workerCard =
     activeTab === 'id-card'
       ? await prisma.user.findUnique({
           where: { id: session.id },
-          select: { id: true, name: true, email: true, mobileNumber: true, role: true, trustScore: true, createdAt: true },
+          select: { id: true, name: true, email: true, mobileNumber: true, role: true, department: true, photoUrl: true, trustScore: true, createdAt: true },
         })
       : null;
 
@@ -50,30 +127,20 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
   }
 
   let maintenanceAssets: any[] = [];
+  let maintenanceCounts = { overdue: 0, soon: 0, all: 0 };
+  const maintFilter = params.filter === 'overdue' || params.filter === 'all' ? params.filter : 'due';
   if (activeTab === 'maintenance') {
-    const allAssets = await prisma.asset.findMany();
-    const now = new Date();
-    maintenanceAssets = allAssets.filter(a => {
-      if (!a.lastMaintenanceDate || !a.maintenanceIntervalDays) return false;
-      const nextDue = new Date(a.lastMaintenanceDate.getTime() + a.maintenanceIntervalDays * 24 * 60 * 60 * 1000);
-      const diffDays = (nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-      return diffDays <= 7; // Due within 7 days or overdue
-    });
-    
-    // Sort by most overdue first
-    maintenanceAssets.sort((a, b) => {
-      const aNext = a.lastMaintenanceDate.getTime() + a.maintenanceIntervalDays * 24 * 60 * 60 * 1000;
-      const bNext = b.lastMaintenanceDate.getTime() + b.maintenanceIntervalDays * 24 * 60 * 60 * 1000;
-      return aNext - bNext;
-    });
+    const built = buildMaintenanceList(await prisma.asset.findMany(), workerArea, maintFilter);
+    maintenanceAssets = built.list;
+    maintenanceCounts = built.counts;
   }
 
-  // 2. Fetch Tasks for complaint tabs
+  // 2. Fetch Tasks for complaint tabs — scoped to the worker's allocated area
   let tasks: any[] = [];
-  if (activeTab !== 'nearby') {
-    let statusFilter: any = 'ROUTED';
-    
-    if (activeTab === 'assigned') statusFilter = 'ROUTED';
+  if (complaintTab && workerArea) {
+    // "My Tasks" = new + routed complaints in the area the worker can pick up
+    let statusFilter: any = { in: ['OPEN', 'ROUTED'] };
+
     if (activeTab === 'reopened') statusFilter = 'REOPENED';
     if (activeTab === 'pending') statusFilter = 'FIXED_PENDING_CONFIRMATION';
     if (activeTab === 'completed') statusFilter = 'CLOSED';
@@ -81,7 +148,7 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
     tasks = await prisma.complaint.findMany({
       where: {
         status: statusFilter,
-        // assignedToWorkerId: session.id (in production)
+        address: { contains: workerArea, mode: "insensitive" },
       },
       include: { asset: true }
     });
@@ -165,9 +232,36 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
                activeTab === 'add-asset' ? "Register a new asset and generate its digital twin." :
                activeTab === 'maintenance' ? "Proactive servicing schedule for assets." :
                activeTab === 'id-card' ? "Your DRISHTI worker credential — carry it on site." :
-               `You have ${tasks.length} tasks in this category.`}
+               !workerArea ? "Select your allocated area to see complaints." :
+               `${tasks.length} ${tasks.length === 1 ? 'complaint' : 'complaints'} in ${workerArea}.`}
             </p>
           </header>
+
+          {/* Allocated-area control (complaint tabs only) */}
+          {complaintTab && workerArea && (
+            <form action={setWorkerArea} className="dc-surface-soft p-4 mb-6 flex flex-wrap items-center gap-3">
+              <span className="dc-mono flex items-center gap-1.5">
+                <MapPinned className="w-3.5 h-3.5" /> Allocated area
+              </span>
+              <span className="dc-badge">{workerArea}</span>
+              <input
+                list="worker-area-options"
+                name="area"
+                defaultValue={workerArea}
+                placeholder="Change area…"
+                className="dc-field"
+                style={{ maxWidth: 220, padding: "8px 12px" }}
+              />
+              <button type="submit" className="dc-pill-ghost text-sm" style={{ minHeight: 38, padding: "0 16px" }}>
+                Update
+              </button>
+            </form>
+          )}
+          <datalist id="worker-area-options">
+            {areaSuggestions.map((a) => (
+              <option key={a} value={a} />
+            ))}
+          </datalist>
 
           {/* Conditional Rendering based on Tab */}
           {activeTab === 'nearby' ? (
@@ -175,16 +269,43 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
           ) : activeTab === 'add-asset' ? (
             <AddAsset origin={origin} />
           ) : activeTab === 'maintenance' ? (
-            <MaintenanceDue assets={maintenanceAssets} />
+            <MaintenanceDue assets={maintenanceAssets} counts={maintenanceCounts} filter={maintFilter} workerArea={workerArea} />
           ) : activeTab === 'id-card' ? (
             workerCard ? <WorkerIdCard worker={workerCard} origin={origin} /> : <p className="text-slate-500">Could not load your credential.</p>
+          ) : needsArea ? (
+            <div className="dc-surface p-8 max-w-lg">
+              <div className="w-14 h-14 rounded-2xl grid place-items-center mb-4" style={{ background: "#dee8c4", border: "1.5px solid #0d5347" }}>
+                <MapPinned className="w-7 h-7 text-primary" />
+              </div>
+              <h3 className="text-xl font-display font-semibold text-slate-800">Set your allocated area</h3>
+              <p className="text-slate-500 mt-1 text-sm">
+                You will only see complaints filed at that location. You can change it any time.
+              </p>
+              <form action={setWorkerArea} className="mt-5 flex flex-col sm:flex-row gap-3">
+                <input
+                  list="worker-area-options"
+                  name="area"
+                  required
+                  placeholder="e.g. Nashik, Kothrud, Ward 18…"
+                  className="dc-field"
+                />
+                <button type="submit" className="dc-pill" style={{ minHeight: 48, padding: "0 24px" }}>
+                  Save area
+                </button>
+              </form>
+              {areaSuggestions.length > 0 && (
+                <p className="dc-mono mt-4" style={{ textTransform: "none", letterSpacing: 0 }}>
+                  Seen in complaints: {areaSuggestions.slice(0, 10).join(" · ")}
+                </p>
+              )}
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {tasks.length === 0 ? (
                 <div className="col-span-full p-12 text-center dc-surface flex flex-col items-center">
                   <CheckCircle2 className="w-16 h-16 text-success/50 mb-4" />
-                  <h3 className="font-semibold text-xl text-slate-800">No tasks found</h3>
-                  <p className="text-slate-500 mt-1">There are no tasks in this category.</p>
+                  <h3 className="font-semibold text-xl text-slate-800">Nothing in {workerArea}</h3>
+                  <p className="text-slate-500 mt-1">No complaints in this category for your area right now.</p>
                 </div>
               ) : (
                 tasks.map(task => {
@@ -217,7 +338,7 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
                         <div>
                           <div className="flex justify-between items-start mb-2">
                             <h3 className="font-bold text-lg text-slate-800">
-                              {task.asset ? task.asset.category.replace('_', ' ') : "General Issue"}
+                              {task.asset ? prettyCategory(task.asset.category) : "General issue"}
                             </h3>
                             {(activeTab === 'assigned' || activeTab === 'reopened') && (
                               <span className={`text-xs font-bold px-2 py-1 rounded-md ${sla.urgent ? 'bg-alert/10 text-alert animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
@@ -232,7 +353,15 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
                           </div>
 
                           {task.description && (
-                            <p className="text-sm text-slate-500 italic bg-slate-50 p-3 rounded-lg border border-gray-100 mb-4">"{task.description}"</p>
+                            <p className="text-sm text-slate-500 italic bg-slate-50 p-3 rounded-lg border border-gray-100 mb-4">&ldquo;{task.description}&rdquo;</p>
+                          )}
+
+                          {activeTab === 'reopened' && (
+                            <p className="text-sm p-3 rounded-lg mb-4" style={{ background: "rgba(178,60,46,.08)", border: "1.5px solid rgba(178,60,46,.25)", color: "#8c2c22" }}>
+                              <span className="dc-mono" style={{ color: "#8c2c22" }}>Citizen sent it back</span>
+                              {task.reopenReason ? ` — "${task.reopenReason}"` : " — reason not given."}
+                              {task.reopenCount > 1 ? ` (×${task.reopenCount})` : ""}
+                            </p>
                           )}
                         </div>
                         

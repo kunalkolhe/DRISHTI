@@ -15,15 +15,6 @@ enum Role {
   ADMIN
 }
 
-enum AssetCategory {
-  STREETLIGHT
-  HANDPUMP
-  OPEN_GYM
-  SOLAR_LIGHT
-  CCTV
-  PUBLIC_TOILET
-}
-
 enum ComplaintStatus {
   OPEN
   ROUTED
@@ -40,6 +31,8 @@ model User {
   mobileNumber     String   @unique
   passwordHash     String
   role             Role     @default(CITIZEN)
+  department       String?
+  photoUrl         String?
   trustScore       Float    @default(100.0)
   createdAt        DateTime @default(now())
 
@@ -51,12 +44,14 @@ model User {
 model Asset {
   id               Int           @id @default(autoincrement())
   qrCodeId         String        @unique
-  category         AssetCategory
+  category         String
   gpsLat           Float
   gpsLon           Float
   department       String
+  area             String?
   installDate      DateTime?
   warrantyStatus   String?
+  warrantyExpiry   DateTime?
   replacementCost  Float?
   riskScore        Float         @default(0.0)
   photoUrl         String?
@@ -85,6 +80,9 @@ model Complaint {
   resolvedAt       DateTime?
   resolvedByWorkerId Int?
   assignedToWorkerId Int?
+  reopenReason     String?
+  reopenCount      Int             @default(0)
+  closedAt         DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 

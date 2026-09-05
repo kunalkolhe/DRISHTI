@@ -23,7 +23,7 @@ export default async function VerifyWorkerPage({
   const worker = userId
     ? await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, name: true, role: true, trustScore: true, createdAt: true },
+        select: { id: true, name: true, role: true, department: true, photoUrl: true, trustScore: true, createdAt: true },
       })
     : null;
 
@@ -49,6 +49,15 @@ export default async function VerifyWorkerPage({
 
         {valid ? (
           <>
+            {worker.photoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={worker.photoUrl.startsWith("http") ? worker.photoUrl : `/${worker.photoUrl.replace(/^\/+/, "")}`}
+                alt={worker.name}
+                className="mx-auto"
+                style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 16, border: "1.5px solid #12150f" }}
+              />
+            )}
             <div>
               <div className="dc-mono">Verified credential</div>
               <h1 className="text-2xl font-display font-semibold text-primary mt-1">{worker.name}</h1>
@@ -62,6 +71,12 @@ export default async function VerifyWorkerPage({
                 <span className="text-slate-500">Role</span>
                 <span className="font-semibold text-slate-800">{ROLE_LABEL[worker.role] || worker.role}</span>
               </div>
+              {worker.department && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Department</span>
+                  <span className="font-semibold text-slate-800 text-right">{worker.department}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Active since</span>
                 <span className="text-slate-800">

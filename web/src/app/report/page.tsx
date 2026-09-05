@@ -232,21 +232,33 @@ export default function ReportPage() {
   };
 
   const captureGPS = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          setLocation({ lat, lon });
-          setAddress(`GPS Location Attached (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
-          // Work out the ward / town / village from the point
-          detectArea({ lat, lon });
-        },
-        () => alert("Could not access GPS. Please ensure location services are enabled.")
-      );
-    } else {
-      alert("Geolocation is not supported by this browser.");
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      setErrorMsg("GPS needs a secure connection (localhost or HTTPS). You can still type the location above and continue.");
+      return;
     }
+    if (!navigator.geolocation) {
+      setErrorMsg("This browser has no location support. Type the location above instead.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        setLocation({ lat, lon });
+        setAddress(`GPS Location Attached (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
+        setErrorMsg("");
+        // Work out the ward / town / village from the point
+        detectArea({ lat, lon });
+      },
+      (err) => {
+        setErrorMsg(
+          err.code === err.PERMISSION_DENIED
+            ? "Location was blocked. Allow it via the padlock icon, or just type the location above."
+            : "Couldn't get a GPS fix. Type the location above and continue.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
   };
 
   // Handle Submission

@@ -80,7 +80,6 @@ export default function HowItWorks() {
             color: "#0d5347",
           }}
         >
-          <span style={{ width: 26, height: 1, background: "#0d5347" }} />
           How it works
         </div>
 
