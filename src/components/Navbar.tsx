@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getSession, logoutUser } from "@/app/actions/auth";
 import { LogOut } from "lucide-react";
 import Logo from "@/components/Logo";
+import MobileNav from "@/components/MobileNav";
 
 export default async function Navbar() {
   const session = await getSession();
@@ -12,15 +13,17 @@ export default async function Navbar() {
       style={{
         background: "#eee8da",
         borderBottom: "1px solid rgba(18,21,15,.16)",
-      }}
+        "--nav-h": "60px",
+      } as React.CSSProperties}
     >
-      <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 sm:py-3.5 flex justify-between items-center gap-2 sm:gap-3 flex-wrap">
+      <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 sm:py-3.5 flex justify-between items-center gap-2 sm:gap-3">
         <div className="mr-auto">
           <Logo href="/" size={36} />
         </div>
 
-        <nav className="flex gap-2 items-center flex-wrap" style={{ fontSize: 15 }}>
-          <Link href="/scorecard" className="drishti-hover drishti-navlink hidden md:inline-block" style={{ color: "#3d433a", padding: "9px 14px", borderRadius: 999, textDecoration: "none" }}>
+        {/* Desktop nav */}
+        <nav className="hidden md:flex gap-2 items-center flex-wrap" style={{ fontSize: 15 }}>
+          <Link href="/scorecard" className="drishti-hover drishti-navlink" style={{ color: "#3d433a", padding: "9px 14px", borderRadius: 999, textDecoration: "none" }}>
             Scorecard
           </Link>
 
@@ -52,7 +55,7 @@ export default async function Navbar() {
               )}
 
               <div className="flex items-center gap-3 pl-3" style={{ borderLeft: "1px solid rgba(18,21,15,.18)", marginLeft: 6 }}>
-                <span className="dc-mono hidden sm:inline-block" style={{ fontSize: 10, color: "#3d433a" }}>{session.name}</span>
+                <span className="dc-mono" style={{ fontSize: 10, color: "#3d433a" }}>{session.name}</span>
                 <form action={logoutUser}>
                   <button type="submit" title="Logout" className="p-1" style={{ background: "transparent", border: "none", cursor: "pointer", color: "#8a8676" }}>
                     <LogOut className="w-4 h-4" />
@@ -62,6 +65,9 @@ export default async function Navbar() {
             </>
           )}
         </nav>
+
+        {/* Mobile nav — camera shortcut + menu */}
+        <MobileNav session={session ? { role: session.role, name: session.name } : null} />
       </div>
     </header>
   );
