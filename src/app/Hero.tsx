@@ -28,18 +28,18 @@ export default function Hero() {
           backgroundSize: "46px 46px",
         }}
       />
-      <div className="pointer-events-none absolute -left-44 -top-36 h-[560px] w-[640px] rounded-full bg-[#dee8c4]/75" />
-      <div className="pointer-events-none absolute -right-32 top-28 h-[520px] w-[520px] rounded-full bg-[#dee8c4]/40" />
+      <div className="pointer-events-none absolute -left-40 -top-32 h-[320px] w-[360px] rounded-full bg-[#dee8c4]/45 sm:h-[560px] sm:w-[640px] sm:bg-[#dee8c4]/75" />
+      <div className="pointer-events-none absolute -right-28 top-24 h-[300px] w-[300px] rounded-full bg-[#dee8c4]/25 sm:h-[520px] sm:w-[520px] sm:bg-[#dee8c4]/40" />
 
-      <div className="relative mx-auto grid w-full max-w-[1560px] flex-1 items-center gap-10 px-5 pb-14 pt-10 sm:px-8 sm:pb-16 sm:pt-14 lg:gap-14 lg:px-10 lg:pb-22 lg:pt-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+      <div className="relative mx-auto grid w-full max-w-[1560px] flex-1 items-start gap-12 px-5 pb-14 pt-10 sm:px-8 sm:pb-16 sm:pt-14 lg:items-center lg:gap-14 lg:px-10 lg:pb-22 lg:pt-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         {/* copy column */}
         <div className="flex min-w-0 flex-col gap-7 sm:gap-8">
-          <h1 className="m-0 text-[clamp(38px,5.6vw,86px)] font-bold leading-[1.08] tracking-[-0.02em]">
+          <h1 className="m-0 text-[clamp(31px,5.6vw,86px)] font-bold leading-[1.1] tracking-[-0.02em] [text-wrap:balance]">
             <span className="block">Report it once.</span>
-            <span className="block pb-1.5 shadow-[inset_0_-6px_0_0_#0d5347]">
+            <span className="inline-block pb-1 shadow-[inset_0_-5px_0_0_#0d5347] sm:pb-1.5 sm:shadow-[inset_0_-6px_0_0_#0d5347]">
               We chase it
             </span>
-            <span className="block text-transparent opacity-55 [-webkit-text-stroke:2px_#0d5347]">
+            <span className="block text-[#0d5347]/45 sm:text-transparent sm:opacity-55 sm:[-webkit-text-stroke:2px_#0d5347]">
               till it&apos;s proven.
             </span>
           </h1>
