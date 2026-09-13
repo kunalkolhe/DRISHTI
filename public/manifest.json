@@ -1,0 +1,31 @@
+{
+  "name": "DRISHTI — Civic Proof",
+  "short_name": "DRISHTI",
+  "description": "Report a civic issue in two taps. The repair team sends proof from the spot, and you get the final say.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#eee8da",
+  "theme_color": "#eee8da",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Report a problem",
+      "short_name": "Report",
+      "url": "/report",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My reports",
+      "short_name": "My reports",
+      "url": "/my-reports",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

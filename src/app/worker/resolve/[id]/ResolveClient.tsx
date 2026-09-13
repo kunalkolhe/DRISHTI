@@ -12,6 +12,7 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [photoFlags, setPhotoFlags] = useState<string[]>([]);
 
   // Stages
   const [qrScanned, setQrScanned] = useState(assetQrCodeId === null); // Auto-pass if no asset
@@ -101,7 +102,9 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
 
     if (result.success) {
       setSuccessMsg("Issue marked as FIXED! Waiting for citizen confirmation.");
-      setTimeout(() => router.push("/worker"), 2500);
+      const flags = result.photoFlags || [];
+      setPhotoFlags(flags);
+      setTimeout(() => router.push("/worker"), flags.length ? 4500 : 2500);
     } else {
       setErrorMsg(result.error || "Failed to resolve issue.");
       setLoading(false);
@@ -129,6 +132,15 @@ export default function ResolveClient({ complaintId, assetQrCodeId }: { complain
           <div className="mb-6 p-4 rounded-xl text-sm font-medium flex items-center gap-3" style={{ background: "rgba(13,83,71,.1)", border: "1.5px solid rgba(13,83,71,.3)", color: "#0d5347" }}>
             <CheckCircle2 className="w-5 h-5 shrink-0" />
             {successMsg}
+          </div>
+        )}
+
+        {photoFlags.length > 0 && (
+          <div className="mb-6 p-4 rounded-xl text-sm flex items-start gap-3" style={{ background: "rgba(181,118,42,.1)", border: "1.5px solid rgba(181,118,42,.35)", color: "#7a4f1c" }}>
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <span>
+              <strong>Heads up:</strong> {photoFlags.join(" ")} The citizen will see this note too — it won&apos;t block anything, but a clearer photo next time helps your fixes get confirmed faster.
+            </span>
           </div>
         )}
 

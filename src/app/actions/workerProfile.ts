@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/app/actions/auth";
-import { saveUpload } from "@/lib/upload";
+import { saveUpload, UploadError } from "@/lib/upload";
 import { revalidatePath } from "next/cache";
 
 export type ProfileResult = { ok: true } | { ok: false; error: string };
@@ -20,9 +20,11 @@ export async function updateWorkerProfile(formData: FormData): Promise<ProfileRe
   if (department) data.department = department;
 
   if (photo && photo.size > 0) {
-    if (!photo.type.startsWith("image/")) return { ok: false, error: "Upload an image file." };
-    if (photo.size > 5 * 1024 * 1024) return { ok: false, error: "Photo must be under 5 MB." };
-    data.photoUrl = await saveUpload(photo, "dp");
+    try {
+      data.photoUrl = await saveUpload(photo, "image");
+    } catch (e) {
+      return { ok: false, error: e instanceof UploadError ? e.message : "Could not save the photo." };
+    }
   }
 
   if (Object.keys(data).length === 0) return { ok: false, error: "Nothing to update." };

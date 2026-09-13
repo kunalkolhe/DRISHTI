@@ -39,8 +39,10 @@ import {
   getEscalationChain,
   type AreaType,
 } from "@/lib/jurisdictions";
+import { useLanguage } from "@/components/LanguageProvider";
 
 function ReportPageInner() {
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const initialAssetId = searchParams.get("asset") || "";
 
@@ -102,7 +104,7 @@ function ReportPageInner() {
     const rawText = opts?.text ?? address;
     const text = rawText && !/^GPS Location Attached/i.test(rawText) ? rawText : undefined;
     if (lat == null && !text) {
-      setAreaError("Add a location description or tag GPS first.");
+      setAreaError(t("report.err.needLocationOrGps"));
       return;
     }
     setAreaLoading(true);
@@ -291,7 +293,7 @@ function ReportPageInner() {
         speechRecognitionRef.current.start();
       }
     } catch {
-      alert("Microphone access denied or not available.");
+      alert(t("report.err.micDenied"));
     }
   };
 
@@ -316,11 +318,11 @@ function ReportPageInner() {
 
   const captureGPS = () => {
     if (typeof window !== "undefined" && !window.isSecureContext) {
-      setErrorMsg("GPS needs a secure connection (localhost or HTTPS). You can still type the location above and continue.");
+      setErrorMsg(t("report.err.gpsNeedsSecureContext"));
       return;
     }
     if (!navigator.geolocation) {
-      setErrorMsg("This browser has no location support. Type the location above instead.");
+      setErrorMsg(t("report.err.noLocationSupport"));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -336,8 +338,8 @@ function ReportPageInner() {
       (err) => {
         setErrorMsg(
           err.code === err.PERMISSION_DENIED
-            ? "Location was blocked. Allow it via the padlock icon, or just type the location above."
-            : "Couldn't get a GPS fix. Type the location above and continue.",
+            ? t("report.err.locationBlocked")
+            : t("report.err.noGpsFix"),
         );
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
@@ -383,8 +385,13 @@ function ReportPageInner() {
       // Draft the formal complaint email if the citizen asked for it
       if (sendEmail && categoryValue) {
         const raw = result.complaint?.originalPhotoUrl || "";
+        // The photo now might already be a full URL (object storage) or a
+        // site-relative path (local-disk fallback) — only the second case
+        // needs turning into an absolute link.
         const photoUrl = raw
-          ? new URL(raw.startsWith("/") ? raw : `/${raw}`, window.location.origin).toString()
+          ? raw.startsWith("http")
+            ? raw
+            : new URL(raw.startsWith("/") ? raw : `/${raw}`, window.location.origin).toString()
           : null;
 
         // Split the chosen escalation chain into "addressed to" + "copy to"
@@ -463,12 +470,12 @@ function ReportPageInner() {
           // Dummy mode never reaches a real inbox, so it doesn't trigger it.
           if (sent.ok && sent.mode === "smtp") setShowSentModal(true);
         } catch {
-          setEmailSent({ error: "Could not reach the mail server." });
+          setEmailSent({ error: t("report.err.mailServerUnreachable") });
         }
       }
       setSuccess(true);
     } else {
-      setErrorMsg(result.error || "Failed to submit.");
+      setErrorMsg(result.error || t("report.err.submitFailed"));
     }
     setLoading(false);
   }
@@ -481,7 +488,7 @@ function ReportPageInner() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      alert("Could not copy automatically. Please select the text in the preview and copy it.");
+      alert(t("report.err.copyFailed"));
     }
   };
 
@@ -518,19 +525,19 @@ function ReportPageInner() {
             <CheckCircle2 className="w-10 h-10 text-primary" />
           </div>
           <div>
-            <h2 className="text-2xl font-display font-semibold text-primary mb-2">Email sent</h2>
+            <h2 className="text-2xl font-display font-semibold text-primary mb-2">{t("report.emailSentTitle")}</h2>
             <p className="text-slate-500 text-sm leading-relaxed">
               {emailSent && "mode" in emailSent && emailSent.mode === "smtp"
-                ? "Delivered to the department and every recipient you selected."
-                : "Your complaint email is on its way to the department and every recipient you selected."}
-              {" "}You can track this report&apos;s status any time from My Reports.
+                ? t("report.emailSentSmtp")
+                : t("report.emailSentDummy")}
+              {" "}{t("report.emailSentTrack")}
             </p>
           </div>
           <a href="/my-reports" className="dc-pill w-full" style={{ minHeight: 52 }}>
-            View My Reports
+            {t("report.viewMyReports")}
           </a>
           <button onClick={resetForm} className="dc-pill-ghost w-full" style={{ minHeight: 52 }}>
-            Report another issue
+            {t("report.reportAnother")}
           </button>
         </div>
       </div>
@@ -545,23 +552,22 @@ function ReportPageInner() {
             <CheckCircle2 className="w-10 h-10 text-primary" />
           </div>
           <div>
-            <h2 className="text-2xl font-display font-semibold text-primary mb-2">Report logged</h2>
+            <h2 className="text-2xl font-display font-semibold text-primary mb-2">{t("report.reportLogged")}</h2>
             <p className="text-slate-500 text-sm leading-relaxed">
-              Your report is on record and the SLA clock started at capture time.
+              {t("report.reportLoggedSub")}
             </p>
           </div>
 
           {emailDraft && (
             <div className="dc-surface-soft p-5 space-y-4 text-left">
-              <div className="dc-mono">Formal email ready</div>
+              <div className="dc-mono">{t("report.formalEmailReady")}</div>
               <p className="text-sm text-slate-600 leading-relaxed">
-                We&apos;ve drafted a formal complaint addressed to <strong>{emailDraft.to}</strong>.
-                Open your email app and press send — nothing else to write.
+                {t("report.email.draftedTo")} <strong>{emailDraft.to}</strong>. {t("report.email.pressSend")}
                 {emailDraft.cc && (() => {
                   const n = emailDraft.cc.split(/\s*,\s*/).filter(Boolean).length;
                   return (
-                    <> A copy goes to <strong>{n}</strong> other {n === 1 ? "recipient" : "recipients"}{" "}
-                    (department heads, elected representatives and your own address, if given).</>
+                    <> {t("report.email.ccPrefix")} <strong>{n}</strong> {n === 1 ? t("report.email.recipient") : t("report.email.recipients")}{" "}
+                    {t("report.email.ccSuffix")}</>
                   );
                 })()}
               </p>
@@ -571,27 +577,27 @@ function ReportPageInner() {
                   {emailSent.mode === "dummy" ? (
                     <>
                       <div className="flex items-center gap-2 font-semibold">
-                        <Check className="w-4 h-4" /> Test email sent (dummy inbox)
+                        <Check className="w-4 h-4" /> {t("report.email.dummySent")}
                       </div>
                       <p className="mt-1 text-xs leading-relaxed" style={{ color: "#4b473b" }}>
-                        Delivered to a throwaway test server — it did <strong>not</strong> reach any real address.
+                        {t("report.email.dummyNote")}
                       </p>
                       {emailSent.previewUrl && (
                         <a href={emailSent.previewUrl} target="_blank" rel="noopener noreferrer" className="dc-mono inline-flex items-center gap-1 mt-2" style={{ color: "#0d5347" }}>
-                          Open the email that was sent ↗
+                          {t("report.email.openSent")}
                         </a>
                       )}
                     </>
                   ) : (
                     <div className="flex items-center gap-2 font-semibold">
-                      <Check className="w-4 h-4" /> Email delivered via SMTP
+                      <Check className="w-4 h-4" /> {t("report.email.smtpSent")}
                     </div>
                   )}
                 </div>
               )}
               {emailSent && "error" in emailSent && (
                 <div className="rounded-xl p-3 text-sm" style={{ background: "rgba(178,60,46,.1)", border: "1.5px solid rgba(178,60,46,.3)", color: "#b23c2e" }}>
-                  Automatic send failed ({emailSent.error}). Use the button below to send it yourself.
+                  {t("report.email.sendFailed", { error: emailSent.error })}
                 </div>
               )}
 
@@ -603,7 +609,7 @@ function ReportPageInner() {
                 className="dc-pill w-full"
                 style={{ minHeight: 52 }}
               >
-                <Mail className="w-4 h-4" /> Open in Gmail to send
+                <Mail className="w-4 h-4" /> {t("report.email.openGmail")}
               </a>
               <a
                 href={emailDraft.mailto}
@@ -611,19 +617,19 @@ function ReportPageInner() {
                 className="dc-pill-ghost w-full text-sm"
                 style={{ minHeight: 44 }}
               >
-                <Mail className="w-4 h-4" /> Or open your device&apos;s email app
+                <Mail className="w-4 h-4" /> {t("report.email.openDeviceApp")}
               </a>
 
               {manualSendOpened && (
                 <div className="rounded-xl p-3 text-sm" style={{ background: manualSendAcked ? "rgba(13,83,71,.08)" : "rgba(181,118,42,.1)", border: `1.5px solid ${manualSendAcked ? "rgba(13,83,71,.3)" : "rgba(181,118,42,.35)"}` }}>
                   {manualSendAcked ? (
                     <div className="flex items-center gap-2 font-semibold" style={{ color: "#0d5347" }}>
-                      <Check className="w-4 h-4" /> Acknowledged — thanks. Your complaint is on record either way.
+                      <Check className="w-4 h-4" /> {t("report.email.acknowledged")}
                     </div>
                   ) : (
                     <>
                       <p className="text-xs leading-relaxed" style={{ color: "#4b473b" }}>
-                        Once you&apos;ve pressed <strong>Send</strong> in the tab/app that just opened, confirm it here.
+                        {t("report.email.confirmPrompt")}
                       </p>
                       <button
                         type="button"
@@ -631,7 +637,7 @@ function ReportPageInner() {
                         className="dc-pill-ghost w-full mt-2 text-sm"
                         style={{ minHeight: 40 }}
                       >
-                        <Check className="w-4 h-4" /> I&apos;ve sent it
+                        <Check className="w-4 h-4" /> {t("report.email.iveSentIt")}
                       </button>
                     </>
                   )}
@@ -641,21 +647,21 @@ function ReportPageInner() {
               <div className="flex gap-2">
                 <button type="button" onClick={copyEmailText} className="dc-pill-ghost flex-1 text-sm" style={{ minHeight: 44 }}>
                   {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Copied" : "Copy email text"}
+                  {copied ? t("report.email.copied") : t("report.email.copyText")}
                 </button>
                 <button type="button" onClick={() => setShowEmailPreview((v) => !v)} className="dc-pill-ghost flex-1 text-sm" style={{ minHeight: 44 }}>
                   <ChevronDown className="w-4 h-4" style={{ transform: showEmailPreview ? "rotate(180deg)" : "none" }} />
-                  {showEmailPreview ? "Hide" : "Preview"}
+                  {showEmailPreview ? t("report.email.hide") : t("report.email.preview")}
                 </button>
               </div>
 
               {showEmailPreview && (
                 <div className="rounded-xl p-4 text-xs leading-relaxed" style={{ background: "#fdfbf3", border: "1.5px solid rgba(18,21,15,.18)" }}>
-                  <p className="dc-mono mb-1" style={{ fontSize: 9 }}>To</p>
+                  <p className="dc-mono mb-1" style={{ fontSize: 9 }}>{t("report.email.toLabel")}</p>
                   <p className="mb-3" style={{ fontFamily: "var(--font-jetbrains), monospace", overflowWrap: "anywhere" }}>{emailDraft.to}</p>
                   {emailDraft.cc && (
                     <>
-                      <p className="dc-mono mb-1" style={{ fontSize: 9 }}>Cc</p>
+                      <p className="dc-mono mb-1" style={{ fontSize: 9 }}>{t("report.email.ccLabel")}</p>
                       <ul className="mb-3 list-none p-0" style={{ fontFamily: "var(--font-jetbrains), monospace" }}>
                         {emailDraft.cc.split(/\s*,\s*/).filter(Boolean).map((addr, i) => (
                           <li key={i} style={{ overflowWrap: "anywhere", marginBottom: 2 }}>{addr}</li>
@@ -663,22 +669,21 @@ function ReportPageInner() {
                       </ul>
                     </>
                   )}
-                  <p className="dc-mono mb-1" style={{ fontSize: 9 }}>Subject</p>
+                  <p className="dc-mono mb-1" style={{ fontSize: 9 }}>{t("report.email.subjectLabel")}</p>
                   <p className="mb-3 font-semibold" style={{ overflowWrap: "anywhere" }}>{emailDraft.subject}</p>
-                  <p className="dc-mono mb-1" style={{ fontSize: 9 }}>Message</p>
+                  <p className="dc-mono mb-1" style={{ fontSize: 9 }}>{t("report.email.messageLabel")}</p>
                   <pre className="whitespace-pre-wrap" style={{ fontFamily: "inherit", margin: 0, overflowWrap: "anywhere" }}>{emailDraft.body}</pre>
                 </div>
               )}
 
               <p className="text-slate-400" style={{ fontSize: 11 }}>
-                Tip: “Open in Gmail” works in any browser — no email app needed, just a signed-in Google account.
-                If that also doesn&apos;t open, use “Copy email text” and paste it into any webmail instead.
+                {t("report.email.tip")}
               </p>
             </div>
           )}
 
           <button onClick={resetForm} className={emailDraft ? "dc-pill-ghost w-full" : "dc-pill w-full"} style={{ minHeight: 52 }}>
-            {emailDraft ? "Report another issue" : "Done"}
+            {emailDraft ? t("report.reportAnother") : t("report.done")}
           </button>
         </div>
       </div>
@@ -698,10 +703,10 @@ function ReportPageInner() {
     >
 
       <header className="px-6 pt-6 pb-5 flex items-center justify-between" style={{ background: "#eee8da", borderBottom: "1.5px solid rgba(18,21,15,.16)" }}>
-        <h1 className="font-display font-semibold text-xl text-primary">Report an issue</h1>
+        <h1 className="font-display font-semibold text-xl text-primary">{t("report.title")}</h1>
         {location && (
           <div className="dc-badge">
-            <MapPin className="w-3 h-3" /> GPS tagged
+            <MapPin className="w-3 h-3" /> {t("report.gpsTagged")}
           </div>
         )}
       </header>
@@ -721,9 +726,9 @@ function ReportPageInner() {
             {/* QR Scanner Field */}
             <div>
               <label className="mb-2 flex justify-between items-center">
-                <span className="dc-mono">Asset ID (optional)</span>
+                <span className="dc-mono">{t("report.assetIdLabel")}</span>
                 <button type="button" onClick={() => setShowQRScanner(true)} className="dc-mono flex items-center gap-1" style={{ color: "#0d5347" }}>
-                  <QrCode className="w-3 h-3" /> Scan QR
+                  <QrCode className="w-3 h-3" /> {t("report.scanQr")}
                 </button>
               </label>
               <input
@@ -732,19 +737,19 @@ function ReportPageInner() {
                 value={assetId}
                 onChange={(e) => { setAssetId(e.target.value); if (linkedAsset) setLinkedAsset(null); }}
                 onBlur={(e) => {
-                  const t = e.target.value.trim();
-                  if (t && (!linkedAsset || linkedAsset.qrCodeId !== extractAssetCode(t)) && !assetLoading) {
-                    prefillFromAsset(t);
+                  const code = e.target.value.trim();
+                  if (code && (!linkedAsset || linkedAsset.qrCodeId !== extractAssetCode(code)) && !assetLoading) {
+                    prefillFromAsset(code);
                   }
                 }}
-                placeholder="Scan QR or enter ID"
+                placeholder={t("report.assetIdPlaceholder")}
                 className="dc-field"
                 style={{ fontFamily: "var(--font-jetbrains), monospace" }}
               />
 
               {assetLoading && (
                 <p className="dc-mono mt-2 flex items-center gap-1.5" style={{ textTransform: "none", letterSpacing: 0 }}>
-                  <Loader2 className="w-3 h-3 animate-spin" /> Looking up asset…
+                  <Loader2 className="w-3 h-3 animate-spin" /> {t("report.lookingUpAsset")}
                 </p>
               )}
               {assetMsg && !assetLoading && (
@@ -764,14 +769,14 @@ function ReportPageInner() {
                   )}
                   <div className="min-w-0 flex-grow">
                     <div className="flex items-center gap-1.5 text-sm font-semibold text-primary">
-                      <CheckCircle2 className="w-4 h-4 shrink-0" /> Auto-filled from this asset
+                      <CheckCircle2 className="w-4 h-4 shrink-0" /> {t("report.autoFilledFromAsset")}
                     </div>
                     <p className="text-sm font-semibold text-slate-800 mt-1 truncate">{linkedAsset.categoryLabel}</p>
                     <p className="dc-mono truncate" style={{ textTransform: "none", letterSpacing: 0 }}>
                       {linkedAsset.qrCodeId}{linkedAsset.area ? ` · ${linkedAsset.area}` : ""}
                     </p>
                     <button type="button" onClick={clearLinkedAsset} className="dc-mono mt-1.5 inline-flex items-center gap-1" style={{ color: "#b5762a" }}>
-                      <X className="w-3 h-3" /> Not this asset — clear
+                      <X className="w-3 h-3" /> {t("report.notThisAsset")}
                     </button>
                   </div>
                 </div>
@@ -781,9 +786,9 @@ function ReportPageInner() {
             {/* Manual Location Field */}
             <div>
               <label className="mb-2 flex justify-between items-center">
-                <span className="dc-mono">Location description</span>
+                <span className="dc-mono">{t("report.locationLabel")}</span>
                 <button type="button" onClick={captureGPS} className="dc-mono flex items-center gap-1" style={{ color: location ? "#0d5347" : "#b5762a" }}>
-                  <MapPin className="w-3 h-3" /> {location ? "GPS tagged" : "Use GPS"}
+                  <MapPin className="w-3 h-3" /> {location ? t("report.gpsTagged") : t("report.useGps")}
                 </button>
               </label>
               <input
@@ -792,33 +797,33 @@ function ReportPageInner() {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 onBlur={(e) => {
-                  const t = e.target.value.trim();
-                  if (t.length > 4 && !/^GPS Location Attached/i.test(t) && !jurisdictionKey && !areaLoading) {
-                    detectArea({ text: t });
+                  const text = e.target.value.trim();
+                  if (text.length > 4 && !/^GPS Location Attached/i.test(text) && !jurisdictionKey && !areaLoading) {
+                    detectArea({ text });
                   }
                 }}
                 required
-                placeholder="e.g. Kothrud, near Mhatre bridge, Pune"
+                placeholder={t("report.locationPlaceholder")}
                 className="dc-field"
               />
               <p className="dc-mono mt-1" style={{ textTransform: "none", letterSpacing: 0 }}>
-                Add the locality / area name — we use it to find your ward and officers.
+                {t("report.locationHelp")}
               </p>
             </div>
 
             {/* Severity Select */}
             <div>
-              <label className="dc-mono mb-2 block">Severity</label>
+              <label className="dc-mono mb-2 block">{t("report.severityLabel")}</label>
               <select name="severity" required className="dc-field">
-                <option value="LOW">Low — minor damage, still functional</option>
-                <option value="MEDIUM">Medium — partially broken</option>
-                <option value="HIGH">High — completely broken / dangerous</option>
+                <option value="LOW">{t("report.severityLow")}</option>
+                <option value="MEDIUM">{t("report.severityMedium")}</option>
+                <option value="HIGH">{t("report.severityHigh")}</option>
               </select>
             </div>
 
             {/* Issue Category → auto-routing */}
             <div>
-              <label className="dc-mono mb-2 block">What is the problem?</label>
+              <label className="dc-mono mb-2 block">{t("report.categoryLabel")}</label>
               <select
                 name="category"
                 required
@@ -826,7 +831,7 @@ function ReportPageInner() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="dc-field"
               >
-                <option value="" disabled>Choose a category…</option>
+                <option value="" disabled>{t("report.categoryPlaceholder")}</option>
                 {ISSUE_CATEGORIES.map((c) => (
                   <option key={c} value={c}>{DEPARTMENT_CONTACTS[c].label}</option>
                 ))}
@@ -834,13 +839,13 @@ function ReportPageInner() {
 
               {linkedAsset && category && (
                 <p className="dc-mono mt-1.5" style={{ textTransform: "none", letterSpacing: 0, color: "#0d5347" }}>
-                  Auto-selected from the scanned asset — change it if the problem is something else.
+                  {t("report.autoSelectedFromAsset")}
                 </p>
               )}
 
               {deptContact && !jurisdiction && (
                 <div className="dc-surface-soft p-4 mt-3 space-y-1.5">
-                  <div className="dc-mono">First responder</div>
+                  <div className="dc-mono">{t("report.firstResponder")}</div>
                   <div className="flex items-start gap-2 text-sm font-semibold text-slate-800">
                     <Building2 className="w-4 h-4 mt-0.5 shrink-0 text-primary" />
                     {deptContact.department}
@@ -850,10 +855,10 @@ function ReportPageInner() {
                     {deptContact.email}
                   </div>
                   {deptContact.phone && (
-                    <div className="dc-mono">Helpline {deptContact.phone}</div>
+                    <div className="dc-mono">{t("report.helpline", { phone: deptContact.phone })}</div>
                   )}
                   <p className="dc-mono" style={{ textTransform: "none", letterSpacing: 0 }}>
-                    Pick your area below to also reach the ward officer, corporator, mayor, MLA and MP.
+                    {t("report.pickAreaHint")}
                   </p>
                 </div>
               )}
@@ -862,7 +867,7 @@ function ReportPageInner() {
             {/* Jurisdiction */}
             <div>
               <label className="mb-2 flex justify-between items-center gap-2">
-                <span className="dc-mono">Which area is this in?</span>
+                <span className="dc-mono">{t("report.whichArea")}</span>
                 <button
                   type="button"
                   onClick={() => detectArea()}
@@ -871,7 +876,7 @@ function ReportPageInner() {
                   style={{ color: "#0d5347" }}
                 >
                   {areaLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <MapPin className="w-3 h-3" />}
-                  {areaLoading ? "Finding…" : "Find from location"}
+                  {areaLoading ? t("report.finding") : t("report.findFromLocation")}
                 </button>
               </label>
 
@@ -879,7 +884,7 @@ function ReportPageInner() {
                 <div className="dc-badge mb-2" style={{ textTransform: "none", letterSpacing: 0, maxWidth: "100%" }}>
                   <MapPin className="w-3 h-3 shrink-0" />
                   <span className="truncate">
-                    {areaGuess.source === "gps" ? "From your GPS: " : "From your description: "}
+                    {areaGuess.source === "gps" ? t("report.fromGps") : t("report.fromDescription")}
                     {areaGuess.label}
                   </span>
                 </div>
@@ -893,14 +898,14 @@ function ReportPageInner() {
                 onChange={(e) => { setJurisdictionKey(e.target.value); setRecipientSel({}); setAreaGuess(null); }}
                 className="dc-field"
               >
-                <option value="">Choose your city / town / village…</option>
+                <option value="">{t("report.chooseCityPlaceholder")}</option>
                 {Object.values(JURISDICTIONS).map((j) => (
                   <option key={j.key} value={j.key}>{j.displayName}</option>
                 ))}
                 <option value="__custom__">
                   {areaGuess && jurisdictionKey === "__custom__"
-                    ? `Detected: ${customArea.name || "my area"}`
-                    : "My area isn't listed…"}
+                    ? t("report.detected", { name: customArea.name || t("report.myAreaFallback") })
+                    : t("report.areaNotListed")}
                 </option>
               </select>
 
@@ -919,14 +924,14 @@ function ReportPageInner() {
                     type="text"
                     value={customArea.name}
                     onChange={(e) => { setCustomArea((a) => ({ ...a, name: e.target.value })); setRecipientSel({}); }}
-                    placeholder="Area / ward / village name — e.g. Kothrud"
+                    placeholder={t("report.areaNamePlaceholder")}
                     className="dc-field"
                   />
                   <input
                     type="text"
                     value={customArea.state}
                     onChange={(e) => setCustomArea((a) => ({ ...a, state: e.target.value }))}
-                    placeholder="State (optional) — e.g. Maharashtra"
+                    placeholder={t("report.statePlaceholder")}
                     className="dc-field"
                   />
                 </div>
@@ -938,7 +943,7 @@ function ReportPageInner() {
               <div className="dc-surface-soft p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <Landmark className="w-4 h-4 text-primary shrink-0" />
-                  <span className="dc-mono">Send to — tick everyone who should get this</span>
+                  <span className="dc-mono">{t("report.sendToChecklist")}</span>
                 </div>
 
                 {escalationChain.map((a) => {
@@ -957,7 +962,7 @@ function ReportPageInner() {
                         <span className="text-sm font-semibold text-slate-800">
                           {a.role}{a.name ? ` — ${a.name}` : ""}
                           {isPrimary && (
-                            <span className="dc-badge ml-2" style={{ fontSize: 9, padding: "2px 6px" }}>addressed to</span>
+                            <span className="dc-badge ml-2" style={{ fontSize: 9, padding: "2px 6px" }}>{t("report.addressedTo")}</span>
                           )}
                         </span>
                         <span className="block truncate" style={{ fontFamily: "var(--font-jetbrains), monospace", fontSize: 11, color: "#6a6555" }}>
@@ -999,14 +1004,14 @@ function ReportPageInner() {
                   style={{ accentColor: "#0d5347" }}
                 />
                 <span>
-                  <span className="font-semibold text-sm text-slate-800">Also send a formal email to the authorities</span>
-                  <span className="block dc-mono">We write the letter — you just press send</span>
+                  <span className="font-semibold text-sm text-slate-800">{t("report.emailOptIn")}</span>
+                  <span className="block dc-mono">{t("report.emailOptInSub")}</span>
                 </span>
               </label>
 
               {sendEmail && (
                 <div>
-                  <label className="dc-mono mb-2 block">Your email — to receive a copy (optional)</label>
+                  <label className="dc-mono mb-2 block">{t("report.ccEmailLabel")}</label>
                   <input
                     type="email"
                     value={ccEmail}
@@ -1023,12 +1028,12 @@ function ReportPageInner() {
             <div>
               <label className="dc-mono mb-2 flex items-center gap-2">
                 <Type className="w-4 h-4" />
-                Description (optional)
+                {t("report.descriptionLabel")}
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder={isRecording ? "Listening to your voice..." : "Write a brief description or use a voice note..."}
+                placeholder={isRecording ? t("report.listening") : t("report.descriptionPlaceholder")}
                 className="dc-field resize-none"
                 style={{ height: 96, ...(isRecording ? { borderColor: "#0d5347", background: "rgba(13,83,71,.06)" } : {}) }}
               />
@@ -1036,9 +1041,9 @@ function ReportPageInner() {
 
             {/* Hardware Controls */}
             <div>
-              <label className="dc-mono mb-3 block">Attach evidence</label>
+              <label className="dc-mono mb-3 block">{t("report.attachEvidence")}</label>
               <div className="grid grid-cols-2 gap-4">
-                
+
                 {/* Photo Capture Card */}
                 <label className="relative cursor-pointer group">
                   <input type="file" accept="image/*" capture="environment" onChange={handlePhotoCapture} className="peer sr-only" />
@@ -1049,14 +1054,14 @@ function ReportPageInner() {
                       <Camera className="w-8 h-8 text-slate-400 group-hover:text-primary transition-colors" />
                     )}
                     <span className={`font-semibold text-sm ${photoPreview ? 'text-primary' : 'text-slate-700'}`}>
-                      {photoPreview ? "Retake photo" : "Take photo"}
+                      {photoPreview ? t("report.retakePhoto") : t("report.takePhoto")}
                     </span>
                   </div>
                 </label>
 
                 {/* Voice Record Card */}
                 <div onClick={isRecording ? stopRecording : (!audioBlob ? startRecording : undefined)} className="cursor-pointer dc-surface-soft p-6 text-center flex flex-col items-center gap-3" style={isRecording ? { borderColor: "#b23c2e" } : audioBlob ? { borderColor: "#0d5347" } : undefined}>
-                  
+
                   {isRecording ? (
                     <Square className="w-8 h-8 text-alert animate-pulse" />
                   ) : audioBlob ? (
@@ -1066,7 +1071,7 @@ function ReportPageInner() {
                   )}
 
                   <span className={`font-semibold text-sm ${isRecording ? 'text-alert' : audioBlob ? 'text-primary' : 'text-slate-700'}`}>
-                    {isRecording ? "Stop..." : audioBlob ? "Recorded" : "Voice Note"}
+                    {isRecording ? t("report.stopRecording") : audioBlob ? t("report.recorded") : t("report.voiceNote")}
                   </span>
                 </div>
               </div>
@@ -1093,7 +1098,7 @@ function ReportPageInner() {
           className="dc-pill w-full"
           style={{ minHeight: 56, fontSize: 17 }}
         >
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Submit report <ChevronRight className="w-5 h-5" /></>}
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{t("report.submitReport")} <ChevronRight className="w-5 h-5" /></>}
         </button>
       </footer>
 
@@ -1106,8 +1111,8 @@ function ReportPageInner() {
           <div className="w-full max-w-sm bg-white rounded-2xl overflow-hidden">
             <div id="reader" className="w-full bg-black"></div>
             <div className="p-4 text-center bg-white">
-              <p className="font-bold text-slate-800">Scan DRISHTI QR Code</p>
-              <p className="text-xs text-slate-500">Point camera at the asset&apos;s digital twin tag.</p>
+              <p className="font-bold text-slate-800">{t("report.scanTitle")}</p>
+              <p className="text-xs text-slate-500">{t("report.scanHint")}</p>
             </div>
           </div>
         </div>

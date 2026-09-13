@@ -1,38 +1,38 @@
+"use client";
+
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
-
-const COLUMNS: { head: string; links: { label: string; href: string }[] }[] = [
-  {
-    head: "Report",
-    links: [
-      { label: "Report a problem", href: "/report" },
-      { label: "Check my complaint", href: "/my-reports" },
-      { label: "Scan an asset QR", href: "/report" },
-    ],
-  },
-  {
-    head: "Transparency",
-    links: [
-      { label: "Ward scorecard", href: "/scorecard" },
-      { label: "How it works", href: "/#how-it-works" },
-    ],
-  },
-  {
-    head: "Account",
-    links: [
-      { label: "Citizen login", href: "/login" },
-      { label: "Worker sign-in", href: "/login" },
-    ],
-  },
-];
-
-const PROMISES = [
-  "Every asset has an ID",
-  "Every fix has proof from the spot",
-  "You get the final say",
-];
+import { useLanguage } from "@/components/LanguageProvider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 export default function SiteFooter() {
+  const { t } = useLanguage();
+
+  const columns: { headKey: TranslationKey; links: { labelKey: TranslationKey; href: string }[] }[] = [
+    {
+      headKey: "footer.col.report",
+      links: [
+        { labelKey: "footer.link.reportProblem", href: "/report" },
+        { labelKey: "footer.link.checkComplaint", href: "/my-reports" },
+        { labelKey: "footer.link.scanQr", href: "/report" },
+      ],
+    },
+    {
+      headKey: "footer.col.transparency",
+      links: [
+        { labelKey: "footer.link.wardScorecard", href: "/scorecard" },
+        { labelKey: "footer.link.howItWorks", href: "/#how-it-works" },
+      ],
+    },
+    {
+      headKey: "footer.col.account",
+      links: [
+        { labelKey: "footer.link.citizenLogin", href: "/login" },
+        { labelKey: "footer.link.workerSignin", href: "/login" },
+      ],
+    },
+  ];
+
   return (
     <footer className="relative overflow-hidden bg-[#12150f] text-[#d8d4c6]">
       {/* faint grid, echoing the hero */}
@@ -57,28 +57,26 @@ export default function SiteFooter() {
                   DRISHTI
                 </span>
                 <span className="font-mono text-[9px] uppercase leading-none tracking-[0.22em] text-[#8a8f7f]">
-                  Civic proof
+                  {t("footer.civicProof")}
                 </span>
               </span>
             </div>
-            <p className="m-0 text-[13px] leading-snug text-[#9a9a88]">
-              {PROMISES.join(" · ")}.
-            </p>
+            <p className="m-0 text-[13px] leading-snug text-[#9a9a88]">{t("footer.tagline")}</p>
           </div>
 
           {/* link columns */}
-          {COLUMNS.map((col) => (
-            <div key={col.head} className="flex flex-col gap-2.5">
+          {columns.map((col) => (
+            <div key={col.headKey} className="flex flex-col gap-2.5">
               <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#5f7d54]">
-                {col.head}
+                {t(col.headKey)}
               </span>
               {col.links.map((l) => (
                 <Link
-                  key={l.label}
+                  key={l.labelKey}
                   href={l.href}
                   className="text-[14px] leading-tight text-[#c8c4b6] no-underline transition-colors hover:text-[#eee8da]"
                 >
-                  {l.label}
+                  {t(l.labelKey)}
                 </Link>
               ))}
             </div>
@@ -87,8 +85,8 @@ export default function SiteFooter() {
 
         {/* bottom bar */}
         <div className="mt-8 flex flex-col gap-2 border-t border-[#d8d4c6]/12 pt-5 font-mono text-[10.5px] leading-relaxed tracking-[0.06em] text-[#8a8f7f] sm:flex-row sm:items-center sm:justify-between">
-          <span>© {new Date().getFullYear()} DRISHTI · Built for a better city</span>
-          <span>Hindi &amp; English · Works on any phone</span>
+          <span>{t("footer.copyright", { year: new Date().getFullYear() })}</span>
+          <span>{t("footer.languages")}</span>
         </div>
       </div>
     </footer>

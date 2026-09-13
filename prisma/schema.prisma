@@ -24,6 +24,15 @@ enum ComplaintStatus {
   REOPENED
 }
 
+enum NotificationType {
+  NEW_COMPLAINT_IN_AREA
+  COMPLAINT_RESOLVED
+  COMPLAINT_CONFIRMED
+  COMPLAINT_REOPENED
+  COMPLAINT_LINKED_DUPLICATE
+  SLA_ESCALATED
+}
+
 model User {
   id               Int      @id @default(autoincrement())
   name             String
@@ -33,12 +42,17 @@ model User {
   role             Role     @default(CITIZEN)
   department       String?
   photoUrl         String?
+  // Field worker's allocated area — mirrors the "worker_area" cookie so
+  // notifications can be targeted server-side without reading a cookie
+  // that belongs to a different request/user.
+  area             String?
   trustScore       Float    @default(100.0)
   createdAt        DateTime @default(now())
 
   complaints       Complaint[] @relation("CitizenComplaints")
   assignedTasks    Complaint[] @relation("WorkerAssignments")
   serviceHistories ServiceHistory[] @relation("WorkerServices")
+  notifications    Notification[]
 }
 
 model Asset {
@@ -77,6 +91,23 @@ model Complaint {
   voiceNoteUrl     String?
   repairPhotoUrl   String?
   workerNotes      String?
+  // Advisory notes from an automated EXIF check (GPS + capture time) on
+  // each proof photo — never blocks anything, just surfaced to whoever
+  // decides whether to trust the photo. Empty array = nothing flagged.
+  reportPhotoFlags String[]        @default([])
+  repairPhotoFlags String[]        @default([])
+  // Set when this complaint was auto-detected as reporting the same
+  // real-world problem as an earlier still-open one — see lib/duplicates.ts.
+  // The duplicate still belongs to its own citizen and gets its own
+  // confirm/reject, it just doesn't trigger a second round of worker alerts,
+  // and is fixed in lockstep with the original.
+  duplicateOfId    Int?
+  // How many full SLA windows this complaint has been left open past —
+  // 0 = on time, 1 = just breached, 2+ = breached again since. Sees
+  // src/app/api/cron/escalate/route.ts; lets that job escalate a complaint
+  // exactly once per tier instead of re-notifying everyone every run.
+  slaEscalationTier Int            @default(0)
+  lastEscalatedAt  DateTime?
   resolvedAt       DateTime?
   resolvedByWorkerId Int?
   assignedToWorkerId Int?
@@ -89,6 +120,8 @@ model Complaint {
   asset            Asset?          @relation(fields: [assetId], references: [id])
   citizen          User            @relation("CitizenComplaints", fields: [citizenId], references: [id])
   assignedWorker   User?           @relation("WorkerAssignments", fields: [assignedToWorkerId], references: [id])
+  duplicateOf      Complaint?      @relation("ComplaintDuplicates", fields: [duplicateOfId], references: [id])
+  duplicates       Complaint[]     @relation("ComplaintDuplicates")
 }
 
 model ServiceHistory {
@@ -103,6 +136,23 @@ model ServiceHistory {
 
   asset            Asset    @relation(fields: [assetId], references: [id])
   worker           User     @relation("WorkerServices", fields: [workerId], references: [id])
+}
+
+model Notification {
+  id          Int              @id @default(autoincrement())
+  userId      Int
+  type        NotificationType
+  title       String
+  message     String
+  link        String?
+  complaintId Int?
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  user        User             @relation(fields: [userId], references: [id])
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
 }
 
 model AuditLog {

@@ -2,21 +2,24 @@
 
 import Link from "next/link";
 import { Check, QrCode, Home, Camera, Bell, User } from "lucide-react";
-
-const PROMISES = [
-  { label: "Photo from the spot", meta: "GEO-STAMPED ON CAPTURE" },
-  { label: "Location matched", meta: "WITHIN 5 METRES" },
-  { label: "You confirm it", meta: "YOUR TAP CLOSES THE FILE" },
-];
-
-const TICKER = [
-  "41H MEDIAN VERIFIED FIX",
-  "WORKS ON ANY PHONE",
-  "HINDI & ENGLISH",
-  "1,284 ASSETS IN YOUR WARD",
-];
+import { useLanguage } from "@/components/LanguageProvider";
 
 export default function Hero() {
+  const { t } = useLanguage();
+
+  const PROMISES = [
+    { label: t("hero.promise1.label"), meta: t("hero.promise1.meta") },
+    { label: t("hero.promise2.label"), meta: t("hero.promise2.meta") },
+    { label: t("hero.promise3.label"), meta: t("hero.promise3.meta") },
+  ];
+
+  const TICKER = [
+    t("hero.ticker.fixTime"),
+    t("hero.ticker.anyPhone"),
+    t("hero.ticker.languages"),
+    t("hero.ticker.assets"),
+  ];
+
   return (
     <section className="relative flex min-h-screen flex-col overflow-hidden bg-[#eee8da] text-[#0d5347]">
       {/* grid + blobs */}
@@ -35,18 +38,17 @@ export default function Hero() {
         {/* copy column */}
         <div className="flex min-w-0 flex-col gap-7 sm:gap-8">
           <h1 className="m-0 text-[clamp(31px,5.6vw,86px)] font-bold leading-[1.1] tracking-[-0.02em] [text-wrap:balance]">
-            <span className="block">Report it once.</span>
+            <span className="block">{t("hero.title1")}</span>
             <span className="inline-block pb-1 shadow-[inset_0_-5px_0_0_#0d5347] sm:pb-1.5 sm:shadow-[inset_0_-6px_0_0_#0d5347]">
-              We chase it
+              {t("hero.title2")}
             </span>
             <span className="block text-[#0d5347]/45 sm:text-transparent sm:opacity-55 sm:[-webkit-text-stroke:2px_#0d5347]">
-              till it&apos;s proven.
+              {t("hero.title3")}
             </span>
           </h1>
 
           <p className="m-0 max-w-[560px] text-[18px] leading-relaxed text-[#0d5347]/85 sm:text-[21px] [text-wrap:pretty]">
-            Broken streetlight? Dry handpump? Tell us in two taps. The repair
-            team must send a photo from the spot — and you get the final say.
+            {t("hero.subtitle")}
           </p>
 
           <div className="flex flex-col items-stretch gap-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
@@ -55,17 +57,17 @@ export default function Hero() {
               className="inline-flex items-center justify-center gap-4 rounded-2xl bg-[#0d5347] px-6 py-4 text-[#f2ecdd] no-underline shadow-[0_14px_28px_rgba(13,83,71,0.22)] transition-transform hover:-translate-y-0.5 sm:gap-6 sm:px-8 sm:py-5"
             >
               <span className="text-[19px] font-semibold leading-none sm:text-[22px]">
-                Report a problem
+                {t("cta.reportProblem")}
               </span>
               <span className="font-mono text-xs leading-none tracking-[0.16em] opacity-70">
-                2 TAPS
+                {t("hero.twoTaps")}
               </span>
             </Link>
             <Link
               href="/my-reports"
               className="inline-flex items-center justify-center gap-3 border-b-2 border-[#0d5347]/35 pb-2 text-[19px] font-semibold leading-none no-underline sm:text-[21px]"
             >
-              Check my complaint <span className="text-[19px]">→</span>
+              {t("hero.checkComplaint")} <span className="text-[19px]">→</span>
             </Link>
           </div>
 
@@ -120,16 +122,16 @@ export default function Hero() {
                     </span>
                     <span className="flex items-center gap-1.5 font-mono text-[11.5px] font-medium leading-none tracking-[0.12em]">
                       <span className="dr-pulse h-[7px] w-[7px] rounded-full bg-[#0d5347]" />
-                      LIVE
+                      {t("hero.mock.live")}
                     </span>
                   </div>
 
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[27px] font-semibold leading-tight tracking-[-0.01em]">
-                      Streetlight, MG Road
+                      {t("hero.mock.title")}
                     </span>
                     <span className="text-[14.5px] leading-snug text-[#0d5347]/70">
-                      Pole 12 · reported 6 August, 9:10 am
+                      {t("hero.mock.sub")}
                     </span>
                   </div>
 
@@ -137,9 +139,9 @@ export default function Hero() {
 
                   <div className="flex flex-col gap-3.5">
                     {[
-                      { t: "Photo taken at the pole", m: "14:22", done: true },
-                      { t: "Location matched", m: "1.8 M", done: true },
-                      { t: "Waiting for your confirmation", m: "YOU", done: false },
+                      { t: t("hero.mock.step1"), m: "14:22", done: true },
+                      { t: t("hero.mock.step2"), m: "1.8 M", done: true },
+                      { t: t("hero.mock.step3"), m: t("hero.mock.you"), done: false },
                     ].map((r) => (
                       <div key={r.t} className="flex items-center gap-3">
                         {r.done ? (
@@ -163,36 +165,36 @@ export default function Hero() {
 
                   <div className="flex items-stretch gap-3">
                     <div className="flex min-h-[118px] min-w-0 flex-1 items-center justify-center rounded-2xl border-[1.5px] border-dashed border-[#0d5347]/40 bg-[repeating-linear-gradient(45deg,rgba(13,83,71,0.07)_0_6px,transparent_6px_13px)] p-3 text-center font-mono text-[12.5px] leading-snug text-[#0d5347]/65">
-                      photo of the repaired light
+                      {t("hero.mock.photoPlaceholder")}
                     </div>
                     <div className="flex w-[66px] flex-none flex-col items-center justify-center gap-2 rounded-2xl border border-[#0d5347]/15 bg-[#f7f3e8]">
                       <QrCode size={26} strokeWidth={1.8} />
                       <span className="font-mono text-[9.5px] leading-none tracking-[0.14em] opacity-65">
-                        SCAN
+                        {t("hero.mock.scan")}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <button className="min-w-0 flex-1 rounded-[32px] bg-[#12150f] px-3.5 py-[17px] text-[15px] font-semibold leading-none text-[#f7f3e8] sm:py-[19px] sm:text-[17.5px]">
-                      Yes, it&apos;s working
+                      {t("hero.mock.yesWorking")}
                     </button>
                     <button className="flex-none rounded-[32px] border-[1.5px] border-[#0d5347]/35 bg-[#f7f3e8] px-4 py-[17px] text-[15px] font-semibold leading-none sm:px-5 sm:py-[19px] sm:text-[17.5px]">
-                      Not yet
+                      {t("hero.mock.notYet")}
                     </button>
                   </div>
 
                   <p className="m-0 text-center text-[13.5px] leading-snug text-[#0d5347]/70">
-                    Your answer closes this complaint. Nobody else can.
+                    {t("hero.mock.closeNote")}
                   </p>
 
                   {/* app bottom nav */}
                   <div className="-mx-5 mt-2 flex items-center justify-around border-t border-[#0d5347]/15 px-6 pt-3.5">
                     {[
-                      { Icon: Home, label: "Home" },
-                      { Icon: Camera, label: "Report", primary: true },
-                      { Icon: Bell, label: "Updates" },
-                      { Icon: User, label: "Me" },
+                      { Icon: Home, label: t("hero.mock.navHome") },
+                      { Icon: Camera, label: t("hero.mock.navReport"), primary: true },
+                      { Icon: Bell, label: t("hero.mock.navUpdates") },
+                      { Icon: User, label: t("hero.mock.navMe") },
                     ].map(({ Icon, label, primary }) => (
                       <span key={label} className="flex flex-col items-center gap-1.5">
                         {primary ? (
@@ -222,10 +224,10 @@ export default function Hero() {
                   </span>
                   <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="whitespace-nowrap text-sm font-semibold leading-tight">
-                      Worker uploaded proof
+                      {t("hero.mock.notifTitle")}
                     </span>
                     <span className="font-mono text-[10px] leading-none tracking-[0.11em] opacity-60">
-                      SL-4412 · JUST NOW
+                      {t("hero.mock.notifSub")}
                     </span>
                   </span>
                   <span className="dr-pulse ml-auto h-2 w-2 rounded-full bg-[#b5762a]" />

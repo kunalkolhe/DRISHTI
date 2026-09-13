@@ -3,64 +3,50 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, Camera, QrCode, ScanLine, ShieldCheck } from "lucide-react";
+import { useLanguage } from "@/components/LanguageProvider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 type Step = {
   n: string;
-  title: string;
-  body: string;
-  meta: string;
+  titleKey: TranslationKey;
+  bodyKey: TranslationKey;
+  metaKey: TranslationKey;
   icon: React.ElementType;
-  reveal: { head: string; body: string; meta: string };
+  reveal: { headKey: TranslationKey; bodyKey: TranslationKey; metaKey: TranslationKey };
 };
 
 const STEPS: Step[] = [
   {
     n: "01",
-    title: "Find the QR tag",
-    body: "Every streetlight, handpump and public toilet carries a small DRISHTI tag with its own ID.",
-    meta: "ONE ASSET · ONE ID",
+    titleKey: "how.step1.title",
+    bodyKey: "how.step1.body",
+    metaKey: "how.step1.meta",
     icon: QrCode,
-    reveal: {
-      head: "The tag is the address.",
-      body: "You don't type a street name or pick from a list. The tag already knows which pole it is, so nothing gets filed against “somewhere on MG Road”.",
-      meta: "NO ADDRESS TYPING",
-    },
+    reveal: { headKey: "how.step1.revealHead", bodyKey: "how.step1.revealBody", metaKey: "how.step1.revealMeta" },
   },
   {
     n: "02",
-    title: "Scan with any phone",
-    body: "Point your camera at the tag. No app to install, no login to remember. It opens in the browser.",
-    meta: "WORKS ON ANY PHONE",
+    titleKey: "how.step2.title",
+    bodyKey: "how.step2.body",
+    metaKey: "how.step2.meta",
     icon: ScanLine,
-    reveal: {
-      head: "Nothing to download.",
-      body: "The scan opens a plain web page — it works on a ₹4,000 phone, on 2G, and for someone using it for the first time.",
-      meta: "NO APP · NO LOGIN",
-    },
+    reveal: { headKey: "how.step2.revealHead", bodyKey: "how.step2.revealBody", metaKey: "how.step2.revealMeta" },
   },
   {
     n: "03",
-    title: "Report in two taps",
-    body: "Snap a photo or record a voice note in Hindi or English. Location is stamped on capture.",
-    meta: "GEO-STAMPED ON CAPTURE",
+    titleKey: "how.step3.title",
+    bodyKey: "how.step3.body",
+    metaKey: "how.step3.meta",
     icon: Camera,
-    reveal: {
-      head: "Two taps, then you're done.",
-      body: "No forms, no department names to guess. Speak it in your language if typing is hard — the time and place are attached automatically.",
-      meta: "VOICE NOTES WELCOME",
-    },
+    reveal: { headKey: "how.step3.revealHead", bodyKey: "how.step3.revealBody", metaKey: "how.step3.revealMeta" },
   },
   {
     n: "04",
-    title: "You close the file",
-    body: "The team fixes it and uploads a photo from the spot. Your tap — nobody else's — closes the complaint.",
-    meta: "NO PROOF, NO CLOSURE",
+    titleKey: "how.step4.title",
+    bodyKey: "how.step4.body",
+    metaKey: "how.step4.meta",
     icon: ShieldCheck,
-    reveal: {
-      head: "Only you can mark it fixed.",
-      body: "A geo-stamped photo from the site is mandatory before anyone can ask you to sign off — and if it isn't actually fixed, you reopen it in one tap.",
-      meta: "CITIZEN HAS THE LAST WORD",
-    },
+    reveal: { headKey: "how.step4.revealHead", bodyKey: "how.step4.revealBody", metaKey: "how.step4.revealMeta" },
   },
 ];
 
@@ -71,6 +57,7 @@ export default function HowItWorks({
   autoDemo?: boolean;
   showConnector?: boolean;
 }) {
+  const { t } = useLanguage();
   const [active, setActive] = useState<number | null>(null);
   const [touched, setTouched] = useState(false);
   const [cycle, setCycle] = useState(0);
@@ -104,21 +91,20 @@ export default function HowItWorks({
       <div className="relative mx-auto flex max-w-[1560px] flex-col gap-13">
         <div className="flex flex-col gap-5">
           <span className="font-mono text-xs font-medium leading-none tracking-[0.24em]">
-            HOW IT WORKS
+            {t("how.eyebrow")}
           </span>
           <h2 className="m-0 text-[clamp(32px,4.6vw,72px)] font-bold leading-[1.1] tracking-[-0.02em]">
-            <span className="block">From a broken light to a</span>
+            <span className="block">{t("how.title1")}</span>
             <span className="block text-transparent opacity-60 [-webkit-text-stroke:1.6px_#0d5347]">
-              proven fix.
+              {t("how.title2")}
             </span>
           </h2>
           <p className="m-0 max-w-[540px] text-lg leading-relaxed text-[#0d5347]/80 sm:text-xl [text-wrap:pretty]">
-            Four steps. The first two take you seconds. The last one puts the
-            decision in your hands.
+            {t("how.subtitle")}
           </p>
           <p className="m-0 flex items-center gap-2.5 font-mono text-[11.5px] leading-none tracking-[0.16em] text-[#0d5347]/60">
             <span className="dr-pulse h-2 w-2 rounded-full bg-[#b5762a]" />
-            HOVER OR TAP A STEP TO SEE WHAT IT MEANS
+            {t("how.hint")}
           </p>
         </div>
 
@@ -156,16 +142,16 @@ export default function HowItWorks({
                   </div>
 
                   <span className="text-[21px] font-semibold leading-tight tracking-[-0.01em]">
-                    {s.title}
+                    {t(s.titleKey)}
                   </span>
                   <p className="m-0 text-[14.5px] leading-normal text-[#0d5347]/80 [text-wrap:pretty]">
-                    {s.body}
+                    {t(s.bodyKey)}
                   </p>
 
                   <div className="mt-auto flex flex-col gap-2.5">
                     <span className="h-px bg-[#0d5347]/20" />
                     <span className="font-mono text-[10px] leading-tight tracking-[0.12em] text-[#0d5347]/60">
-                      {s.meta}
+                      {t(s.metaKey)}
                     </span>
                   </div>
 
@@ -185,13 +171,13 @@ export default function HowItWorks({
                   >
                     <Icon size={30} strokeWidth={1.8} className="text-[#dee8c4]" />
                     <span className="text-[17px] font-semibold leading-snug">
-                      {s.reveal.head}
+                      {t(s.reveal.headKey)}
                     </span>
                     <p className="m-0 text-[13.5px] leading-normal text-[#f2ecdd]/85 [text-wrap:pretty]">
-                      {s.reveal.body}
+                      {t(s.reveal.bodyKey)}
                     </p>
                     <span className="font-mono text-[10px] leading-tight tracking-[0.14em] text-[#b5762a]">
-                      {s.reveal.meta}
+                      {t(s.reveal.metaKey)}
                     </span>
                   </div>
                 </div>
@@ -206,17 +192,17 @@ export default function HowItWorks({
             className="inline-flex items-center justify-center gap-4 rounded-2xl bg-[#0d5347] px-6 py-4 text-[#f2ecdd] no-underline transition-transform hover:-translate-y-0.5 sm:gap-6 sm:px-8 sm:py-5"
           >
             <span className="text-[19px] font-semibold leading-none sm:text-[22px]">
-              Report a problem
+              {t("cta.reportProblem")}
             </span>
             <span className="font-mono text-xs leading-none tracking-[0.16em] opacity-70">
-              2 TAPS
+              {t("hero.twoTaps")}
             </span>
           </Link>
           <Link
             href="/scorecard"
             className="inline-flex items-center justify-center gap-3 border-b-2 border-[#0d5347]/35 pb-2 text-[18px] font-semibold leading-tight no-underline sm:text-[21px]"
           >
-            See how your ward is doing <span className="text-[19px]">→</span>
+            {t("how.seeWard")} <span className="text-[19px]">→</span>
           </Link>
         </div>
       </div>

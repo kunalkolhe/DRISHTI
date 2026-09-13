@@ -1,5 +1,22 @@
 import { prisma } from "@/lib/prisma";
-import { Activity, CheckCircle2, TrendingUp, Users } from "lucide-react";
+import { Activity, CheckCircle2, TrendingUp, Users, MapIcon } from "lucide-react";
+import { prettyCategory } from "@/lib/assetTypes";
+import CityMapLoader from "@/components/CityMapLoader";
+import type { MapPoint } from "@/components/CityMap";
+
+const STATUS_MAP_COLOR: Record<string, string> = {
+  OPEN: "#b23c2e",
+  ROUTED: "#b5762a",
+  REOPENED: "#b5762a",
+  FIXED_PENDING_CONFIRMATION: "#0d5347",
+  CLOSED: "#0d5347",
+  REJECTED: "#6a6555",
+};
+
+/** Pulls the "(Category label)" tag createComplaint writes at the front of description. */
+function categoryFromDescription(description: string | null): string | null {
+  return description?.match(/^\(([^)]+)\)/)?.[1] ?? null;
+}
 
 // This is a Server Component, meaning this code runs on the backend
 // and fetches fresh data every time the page loads!
@@ -23,6 +40,48 @@ export default async function ScorecardPage() {
     orderBy: { createdAt: 'desc' },
     include: { asset: true }
   });
+
+  // 3. Map data — only complaints/assets that actually have a GPS point can
+  // be plotted; a citizen who only typed an address has nothing to show
+  // here (honest limitation, flagged in the caption under the map).
+  const [mappedComplaints, mappedAssets, totalGeotagged] = await Promise.all([
+    prisma.complaint.findMany({
+      where: { gpsLat: { not: null }, gpsLon: { not: null } },
+      select: {
+        id: true, status: true, gpsLat: true, gpsLon: true, createdAt: true,
+        description: true, asset: { select: { category: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 300,
+    }),
+    prisma.asset.findMany({
+      select: { id: true, category: true, gpsLat: true, gpsLon: true, qrCodeId: true },
+      take: 300,
+    }),
+    prisma.complaint.count({ where: { gpsLat: { not: null } } }),
+  ]);
+
+  const mapPoints: MapPoint[] = [
+    ...mappedAssets.map((a): MapPoint => ({
+      id: a.id,
+      kind: "asset",
+      lat: a.gpsLat,
+      lon: a.gpsLon,
+      label: prettyCategory(a.category),
+      sublabel: `Registered asset · ${a.qrCodeId}`,
+      color: "#0d5347",
+      href: `/asset/${a.qrCodeId}`,
+    })),
+    ...mappedComplaints.map((c): MapPoint => ({
+      id: c.id,
+      kind: "complaint",
+      lat: c.gpsLat as number,
+      lon: c.gpsLon as number,
+      label: c.asset ? prettyCategory(c.asset.category) : (categoryFromDescription(c.description) || "General issue"),
+      sublabel: `${c.status.replace(/_/g, " ")} · ${new Date(c.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+      color: STATUS_MAP_COLOR[c.status] || "#6a6555",
+    })),
+  ];
 
   return (
     <div className="min-h-screen bg-background selection:bg-accent/20">
@@ -78,6 +137,35 @@ export default async function ScorecardPage() {
             </div>
           </div>
 
+        </div>
+
+        {/* Live Map */}
+        <div className="dc-surface overflow-hidden mb-8" style={{ padding: 0 }}>
+          <div className="p-6 flex flex-wrap items-center justify-between gap-3" style={{ borderBottom: "1.5px solid rgba(18,21,15,.14)" }}>
+            <div className="flex items-center gap-2">
+              <MapIcon className="w-4 h-4 text-primary" />
+              <h3 className="font-semibold text-slate-800 text-lg">Where things stand</h3>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+              <span className="flex items-center gap-1.5"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#b23c2e" }} /> Open</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#b5762a" }} /> In progress</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: "#0d5347" }} /> Fixed / asset</span>
+            </div>
+          </div>
+          {mapPoints.length === 0 ? (
+            <div className="p-12 text-center text-slate-400 font-medium">
+              Nothing with a GPS location yet — the map fills in as reports and assets come in with location tagged.
+            </div>
+          ) : (
+            <>
+              <div style={{ height: 420 }}>
+                <CityMapLoader points={mapPoints} />
+              </div>
+              <p className="px-6 py-3 text-xs text-slate-400" style={{ borderTop: "1.5px solid rgba(18,21,15,.1)" }}>
+                {totalGeotagged} of {totalComplaints} reports have a mapped location · {mappedAssets.length} registered assets shown.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Live Feed */}

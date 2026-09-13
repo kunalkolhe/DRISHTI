@@ -123,6 +123,12 @@ export default async function MyReportsPage() {
                         &ldquo;{report.description}&rdquo;
                       </div>
                     )}
+
+                    {report.duplicateOfId && (
+                      <p className="text-xs mt-2" style={{ color: "#7a4f1c" }}>
+                        Linked to an existing report of the same issue — you&apos;ll get the same updates, and the team won&apos;t be asked to fix it twice.
+                      </p>
+                    )}
                   </div>
 
                   {report.status === "FIXED_PENDING_CONFIRMATION" && (
@@ -130,6 +136,7 @@ export default async function MyReportsPage() {
                       complaintId={report.id}
                       repairPhotoUrl={report.repairPhotoUrl}
                       workerNotes={report.workerNotes}
+                      photoFlags={report.repairPhotoFlags}
                     />
                   )}
 

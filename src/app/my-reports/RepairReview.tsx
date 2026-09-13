@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { confirmRepair, rejectRepair } from "@/app/actions/complaint";
-import { Loader2, CheckCircle2, ThumbsDown, X } from "lucide-react";
+import { Loader2, CheckCircle2, ThumbsDown, X, ShieldAlert } from "lucide-react";
 
 function imgSrc(u: string) {
   return u.startsWith("http") ? u : `/${u.replace(/^\/+/, "")}`;
@@ -13,10 +13,13 @@ export default function RepairReview({
   complaintId,
   repairPhotoUrl,
   workerNotes,
+  photoFlags,
 }: {
   complaintId: number;
   repairPhotoUrl: string | null;
   workerNotes: string | null;
+  /** Advisory notes from an automated EXIF check — never a hard block, just a heads-up. */
+  photoFlags?: string[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<"" | "confirm" | "reject">("");
@@ -52,6 +55,19 @@ export default function RepairReview({
           className="w-full rounded-lg mb-3"
           style={{ maxHeight: 220, objectFit: "cover", border: "1.5px solid rgba(18,21,15,.2)" }}
         />
+      )}
+
+      {photoFlags && photoFlags.length > 0 && (
+        <div
+          className="flex items-start gap-2 rounded-lg p-2.5 mb-3 text-xs leading-snug"
+          style={{ background: "rgba(181,118,42,.1)", border: "1.5px solid rgba(181,118,42,.35)", color: "#7a4f1c" }}
+        >
+          <ShieldAlert className="w-3.5 h-3.5 flex-none mt-0.5" />
+          <div>
+            <span className="font-semibold">Automated check found something worth a second look:</span>{" "}
+            {photoFlags.join(" ")} This doesn&apos;t mean it&apos;s wrong — just judge for yourself from the photo.
+          </div>
+        </div>
       )}
 
       {workerNotes && (

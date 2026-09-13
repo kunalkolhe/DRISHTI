@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registerUser, loginUser } from "@/app/actions/auth";
 import { Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 export default function AuthPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [isLogin, setIsLogin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -21,7 +23,7 @@ export default function AuthPage() {
     if (isLogin) {
       const result = await loginUser(formData);
       if (result.success) {
-        setSuccessMsg("Logged in. Redirecting…");
+        setSuccessMsg(t("login.loggedInRedirecting"));
         setTimeout(() => {
           const dest =
             result.user?.role === "ADMIN" ? "/admin" :
@@ -31,15 +33,15 @@ export default function AuthPage() {
           router.refresh();
         }, 500);
       } else {
-        setErrorMsg(result.error || "Authentication failed.");
+        setErrorMsg(result.error || t("login.authFailed"));
       }
     } else {
       const result = await registerUser(formData);
       if (result.success) {
-        setSuccessMsg("Account created. You can sign in now.");
+        setSuccessMsg(t("login.accountCreated"));
         setIsLogin(true);
       } else {
-        setErrorMsg(result.error || "Authentication failed.");
+        setErrorMsg(result.error || t("login.authFailed"));
       }
     }
 
@@ -65,25 +67,25 @@ export default function AuthPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#eee8da", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div className="dc-eyebrow" style={{ marginBottom: 20 }}>
-        {isLogin ? "Welcome back" : "Join DRISHTI"}
+        {isLogin ? t("login.welcomeBack") : t("login.joinDrishti")}
       </div>
 
       <div className="dc-surface" style={{ width: "100%", maxWidth: 440, overflow: "hidden", padding: 0 }}>
         <div style={{ display: "flex", borderBottomWidth: "1.5px", borderBottomStyle: "solid", borderBottomColor: "rgba(18,21,15,.22)" }}>
           <button type="button" onClick={() => { setIsLogin(false); setErrorMsg(""); setSuccessMsg(""); }} style={tab(!isLogin)}>
-            Create account
+            {t("login.createAccount")}
           </button>
           <button type="button" onClick={() => { setIsLogin(true); setErrorMsg(""); setSuccessMsg(""); }} style={tab(isLogin)}>
-            Sign in
+            {t("login.signIn")}
           </button>
         </div>
 
         <div style={{ padding: 32 }}>
           <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.04em", margin: 0 }}>
-            {isLogin ? "Sign in to track your reports" : "Register to report civic issues"}
+            {isLogin ? t("login.signInHeading") : t("login.registerHeading")}
           </h1>
           <p style={{ color: "#6a6555", fontSize: 14.5, margin: "8px 0 0" }}>
-            Only your mobile number and complaint history are stored.
+            {isLogin ? t("login.signInSubtitle") : t("login.registerSubtitle")}
           </p>
 
           {errorMsg && (
@@ -101,37 +103,29 @@ export default function AuthPage() {
             {!isLogin && (
               <>
                 <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <span className="dc-mono">Full name</span>
-                  <input type="text" name="name" required placeholder="Jane Doe" className="dc-field" />
+                  <span className="dc-mono">{t("login.fullName")}</span>
+                  <input type="text" name="name" required placeholder={t("login.fullNamePlaceholder")} className="dc-field" />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <span className="dc-mono">Email address (optional)</span>
+                  <span className="dc-mono">{t("login.emailOptional")}</span>
                   <input type="email" name="email" placeholder="jane@example.com" className="dc-field" />
-                </label>
-                <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <span className="dc-mono">Account type</span>
-                  <select name="role" required className="dc-field">
-                    <option value="CITIZEN">Citizen — report issues</option>
-                    <option value="FIELD_WORKER">Field worker — resolve issues</option>
-                    <option value="ADMIN">Administrator — manage system</option>
-                  </select>
                 </label>
               </>
             )}
 
             <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span className="dc-mono">{isLogin ? "Mobile number or email" : "Mobile number"}</span>
+              <span className="dc-mono">{isLogin ? t("login.mobileOrEmail") : t("login.mobileNumber")}</span>
               <input
                 type={isLogin ? "text" : "tel"}
                 name={isLogin ? "identifier" : "mobileNumber"}
                 required
-                placeholder={isLogin ? "Enter mobile or email" : "9999999999"}
+                placeholder={isLogin ? t("login.mobileOrEmailPlaceholder") : "9999999999"}
                 className="dc-field"
               />
             </label>
 
             <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span className="dc-mono">Password</span>
+              <span className="dc-mono">{t("login.password")}</span>
               <div style={{ position: "relative" }}>
                 <input type={showPassword ? "text" : "password"} name="password" required placeholder="••••••••" className="dc-field" style={{ paddingRight: 44 }} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", cursor: "pointer", color: "#8a8676" }}>
@@ -141,7 +135,7 @@ export default function AuthPage() {
             </label>
 
             <button type="submit" disabled={loading} className="dc-pill" style={{ minHeight: 56, fontSize: 17, marginTop: 4 }}>
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : isLogin ? "Sign in" : "Create account"}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : isLogin ? t("login.signIn") : t("login.createAccount")}
             </button>
           </form>
         </div>

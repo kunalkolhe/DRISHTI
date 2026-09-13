@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/app/actions/auth";
+import { prisma } from "@/lib/prisma";
 
 const COOKIE = "worker_area";
 const ONE_YEAR = 60 * 60 * 24 * 365;
@@ -29,6 +30,15 @@ export async function setWorkerArea(formData: FormData) {
     });
   } else {
     store.delete(COOKIE);
+  }
+
+  // Mirror onto the User row too — the cookie is per-browser, but "new
+  // complaint in your area" notifications are created from a server action
+  // with no access to this worker's cookie jar, so they need it in the DB.
+  try {
+    await prisma.user.update({ where: { id: session.id }, data: { area: area || null } });
+  } catch (e) {
+    console.error("Failed to persist worker area:", e);
   }
 
   revalidatePath("/worker");

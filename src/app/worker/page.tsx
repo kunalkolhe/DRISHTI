@@ -12,6 +12,7 @@ import AddAsset from "./AddAsset";
 import MaintenanceDue from "./MaintenanceDue";
 import WorkerIdCard from "@/components/WorkerIdCard";
 import { prettyCategory } from "@/lib/assetTypes";
+import { getSLA } from "@/lib/sla";
 
 const AREA_STOPWORDS = new Set([
   "near", "opposite", "opp", "main", "gate", "road", "street", "cross", "behind",
@@ -41,6 +42,7 @@ function deriveAreas(addresses: (string | null)[]): string[] {
 type AssetRecord = Awaited<ReturnType<typeof prisma.asset.findMany>>[number];
 type TaskRecord = Awaited<ReturnType<typeof prisma.complaint.findMany>>[number] & {
   asset: AssetRecord | null;
+  duplicates: { id: number }[];
 };
 
 const MS_DAY = 86400000;
@@ -77,15 +79,6 @@ function buildMaintenanceList(allAssets: AssetRecord[], workerArea: string | nul
   return { list, counts };
 }
 
-function getSLA(createdAt: Date, severity: string | null) {
-  const hours = severity === 'HIGH' ? 24 : severity === 'MEDIUM' ? 72 : 168; 
-  const deadline = new Date(createdAt.getTime() + hours * 60 * 60 * 1000);
-  const now = new Date();
-  const diffHours = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
-  
-  if (diffHours < 0) return { text: `${Math.abs(Math.round(diffHours))}h OVERDUE`, urgent: true };
-  return { text: `${Math.round(diffHours)}h remaining`, urgent: diffHours < 12 };
-}
 
 export default async function WorkerDashboard({ searchParams }: { searchParams: Promise<{ tab?: string; filter?: string }> }) {
   const session = await getSession();
@@ -159,8 +152,12 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
       where: {
         status: statusFilter,
         address: { contains: workerArea, mode: "insensitive" },
+        // Duplicates ride along with the primary complaint (see
+        // lib/duplicates.ts) — a worker only ever has one real job per
+        // problem, not one per citizen who happened to report it too.
+        duplicateOfId: null,
       },
-      include: { asset: true }
+      include: { asset: true, duplicates: { select: { id: true } } }
     });
 
     if (activeTab === 'assigned' || activeTab === 'reopened') {
@@ -356,7 +353,13 @@ export default async function WorkerDashboard({ searchParams }: { searchParams: 
                               </span>
                             )}
                           </div>
-                          
+
+                          {task.duplicates.length > 0 && (
+                            <div className="dc-badge mb-3" style={{ background: "rgba(181,118,42,.12)", color: "#7a4f1c", borderColor: "rgba(181,118,42,.4)" }}>
+                              +{task.duplicates.length} other {task.duplicates.length === 1 ? "citizen" : "citizens"} reported this too
+                            </div>
+                          )}
+
                           <div className="flex items-start gap-2 text-sm text-slate-600 mb-4">
                             <MapPin className="w-4 h-4 mt-0.5 text-slate-400 shrink-0" />
                             <span>{task.address ? task.address : (task.asset ? `Asset Tag: ${task.asset.qrCodeId}` : "Unknown Location")}</span>

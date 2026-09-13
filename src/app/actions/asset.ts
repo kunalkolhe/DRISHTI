@@ -10,26 +10,8 @@ import {
   assetIssueCategory,
 } from "@/lib/assetTypes";
 import { extractAssetCode } from "@/lib/qr";
-import fs from "fs/promises";
-import path from "path";
+import { saveUpload, UploadError } from "@/lib/upload";
 import crypto from "crypto";
-
-// Save file to local public/uploads directory (Mocking S3/MinIO)
-async function saveFileLocally(file: File): Promise<string> {
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-  
-  const uniquePrefix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-  const filename = `${uniquePrefix}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`;
-  
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-  await fs.mkdir(uploadDir, { recursive: true });
-  
-  const filepath = path.join(uploadDir, filename);
-  await fs.writeFile(filepath, buffer);
-  
-  return `/uploads/${filename}`;
-}
 
 export type AssetLookup = {
   qrCodeId: string;
@@ -117,7 +99,7 @@ export async function createAsset(formData: FormData) {
   }
 
   try {
-    const photoUrl = await saveFileLocally(photo);
+    const photoUrl = await saveUpload(photo, "image");
 
     const qrCodeId = "DRISHTI-" + crypto.randomBytes(4).toString('hex').toUpperCase();
     const intervalDays = maintenanceDaysFor(category);
@@ -155,7 +137,7 @@ export async function createAsset(formData: FormData) {
     return { success: true, asset, categoryLabel: prettyCategory(category) };
   } catch (error) {
     console.error("Asset creation error:", error);
-    return { success: false, error: "Failed to create asset. Please try again." };
+    return { success: false, error: error instanceof UploadError ? error.message : "Failed to create asset. Please try again." };
   }
 }
 
@@ -175,7 +157,7 @@ export async function logMaintenance(formData: FormData) {
   }
 
   try {
-    const photoUrl = await saveFileLocally(photo);
+    const photoUrl = await saveUpload(photo, "image");
     const cost = costRaw ? parseFloat(costRaw) : null;
 
     // Run in transaction: Create service history AND update asset's lastMaintenanceDate
@@ -201,6 +183,6 @@ export async function logMaintenance(formData: FormData) {
     return { success: true };
   } catch (error) {
     console.error("Maintenance log error:", error);
-    return { success: false, error: "Failed to log maintenance." };
+    return { success: false, error: error instanceof UploadError ? error.message : "Failed to log maintenance." };
   }
 }

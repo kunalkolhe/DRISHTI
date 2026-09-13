@@ -2,9 +2,13 @@ import Link from "next/link";
 import { getSession, logoutUser } from "@/app/actions/auth";
 import { LogOut } from "lucide-react";
 import Logo from "@/components/Logo";
+import NotificationBell from "@/components/NotificationBell";
+import LanguageToggle from "@/components/LanguageToggle";
+import { getLocale } from "@/lib/i18n/locale";
+import { t } from "@/lib/i18n/translations";
 
 export default async function Navbar() {
-  const session = await getSession();
+  const [session, locale] = await Promise.all([getSession(), getLocale()]);
 
   return (
     <header
@@ -21,46 +25,49 @@ export default async function Navbar() {
 
         <nav className="flex gap-2 items-center flex-wrap" style={{ fontSize: 15 }}>
           <Link href="/scorecard" className="drishti-hover drishti-navlink hidden md:inline-block" style={{ color: "#3d433a", padding: "9px 14px", borderRadius: 999, textDecoration: "none" }}>
-            Scorecard
+            {t(locale, "nav.scorecard")}
           </Link>
 
           {!session ? (
             <>
               <Link href="/login" className="drishti-hover drishti-navlink" style={{ color: "#3d433a", padding: "9px 14px", borderRadius: 999, textDecoration: "none" }}>
-                Login
+                {t(locale, "nav.login")}
               </Link>
               <Link href="/report" className="drishti-hover drishti-navcta" style={{ fontWeight: 500, background: "#12150f", color: "#eee8da", padding: "0 22px", minHeight: 44, borderRadius: 999, display: "inline-flex", alignItems: "center", boxShadow: "0 3px 0 rgba(18,21,15,.45)", textDecoration: "none" }}>
-                Report a problem
+                {t(locale, "nav.reportProblem")}
               </Link>
             </>
           ) : (
             <>
               {session.role === "CITIZEN" && (
                 <Link href="/my-reports" className="drishti-hover drishti-navlink" style={{ color: "#3d433a", padding: "9px 14px", borderRadius: 999, textDecoration: "none" }}>
-                  My Reports
+                  {t(locale, "nav.myReports")}
                 </Link>
               )}
               {session.role === "FIELD_WORKER" && (
                 <Link href="/worker" className="drishti-hover drishti-navcta" style={{ fontWeight: 500, background: "#0d5347", color: "#f8fbf0", padding: "0 20px", minHeight: 44, borderRadius: 999, display: "inline-flex", alignItems: "center", boxShadow: "0 3px 0 rgba(9,58,50,.9)", textDecoration: "none" }}>
-                  Worker Dashboard
+                  {t(locale, "nav.workerDashboard")}
                 </Link>
               )}
               {session.role === "ADMIN" && (
                 <Link href="/admin" className="drishti-hover drishti-navcta" style={{ fontWeight: 500, background: "#12150f", color: "#eee8da", padding: "0 20px", minHeight: 44, borderRadius: 999, display: "inline-flex", alignItems: "center", boxShadow: "0 3px 0 rgba(18,21,15,.45)", textDecoration: "none" }}>
-                  Admin Panel
+                  {t(locale, "nav.adminPanel")}
                 </Link>
               )}
 
               <div className="flex items-center gap-3 pl-3" style={{ borderLeft: "1px solid rgba(18,21,15,.18)", marginLeft: 6 }}>
+                <NotificationBell />
                 <span className="dc-mono hidden sm:inline-block" style={{ fontSize: 10, color: "#3d433a" }}>{session.name}</span>
                 <form action={logoutUser}>
-                  <button type="submit" title="Logout" className="p-1" style={{ background: "transparent", border: "none", cursor: "pointer", color: "#8a8676" }}>
+                  <button type="submit" title={t(locale, "nav.logout")} className="p-1" style={{ background: "transparent", border: "none", cursor: "pointer", color: "#8a8676" }}>
                     <LogOut className="w-4 h-4" />
                   </button>
                 </form>
               </div>
             </>
           )}
+
+          <LanguageToggle />
         </nav>
       </div>
     </header>
