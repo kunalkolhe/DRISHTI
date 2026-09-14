@@ -18,9 +18,9 @@ export default async function Navbar() {
         borderBottom: "1px solid rgba(18,21,15,.16)",
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 sm:py-3.5 flex justify-between items-center gap-2 sm:gap-3 flex-wrap">
+      <div className="w-full px-5 py-3 sm:px-8 sm:py-3.5 lg:px-10 flex justify-between items-center gap-2 sm:gap-3 flex-wrap">
         <div className="mr-auto">
-          <Logo href="/" size={36} />
+          <Logo href="/" size={36} subtitle={null} />
         </div>
 
         <nav className="flex gap-2 items-center flex-wrap" style={{ fontSize: 15 }}>
